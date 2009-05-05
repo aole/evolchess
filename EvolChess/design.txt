@@ -1,0 +1,25 @@
+main.cpp
+- display welcome/exit message
+- parse any command line options
+- run in a loop to receive user inputs
+- transfer user inputs to cmdparser.cpp $commands
+- interpret or delegate commands interpretations from cmdparser
+- set in xboard mode if asked. default is cmd mode $program modes
+- start/stop engine when required. $engine.cpp
+- pass moves to n fro engine and user/xboard.
+
+cmdparser.cpp
+- receive text messages
+- parse messages and return interpretations based on commands.h
+- return interpretted commands and array of parameters
+- distinguish between general commands and move commands
+
+engine.cpp
+- initialize engine to standard start.
+- parse moves received from main
+- check if move is valid
+- A. update engine with the move
+- if engines move then think about move
+- - textize the move
+- - return move back to main
+- - go back to A.
