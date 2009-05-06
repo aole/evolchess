@@ -94,6 +94,7 @@ public:
 	void newGame();
 	void show_board();
 
+	int sidetomove() { return moveof; };
 	int domove(int index);
 	int doaimove();
 	void undolastmove();

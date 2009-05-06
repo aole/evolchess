@@ -14,6 +14,7 @@ using namespace std;
 //main function; entry point
 int main() {
      int xboard = 0;
+     byte engineplay = 0;
      Engine engine;
 
      cin.rdbuf()->pubsetbuf(NULL,0);
@@ -27,7 +28,17 @@ int main() {
      char res[500];
 
      for (;;) {
-         //_read(0, res, 50);
+    	 //check if engine has to move
+    	 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
+    	    ((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
+             cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
+             cout.flush();
+             engine.generate_moves();
+             if (!xboard)
+                engine.show_board();
+    	 }
+
+    	 //get user/xboard input
          cin.getline(res, 500);
 
          if (!strcmp(res, "xboard")) {
@@ -42,29 +53,36 @@ int main() {
          } else if (!strncmp(res, "accepted", 8)) {
                 // features accepted
          } else if (!strcmp(res, "new")) {
-                //cout << "starting new game ...\n";
+             /*
+              * Reset the board to the standard chess starting position.
+              * Set White on move.
+              * Leave force mode and set the engine to play Black.
+              */
         	 engine.newGame();
 			 engine.generate_moves();
              if (!xboard)
             	 engine.show_board();
-           // start new game
+             engineplay = PLAYBLACK;
          } else if (!strcmp(res, "random")) {
-                // ignore random command
+             // ignore random command
          } else if (!strncmp (res, "level", 5)) {
-                //Set time controls. need to parse.
+             //Set time controls. need to parse.
          } else if (!strcmp (res, "hard")) {
-                //Turn on pondering (thinking on the opponent's time, also known as "permanent brain").
+             //Turn on pondering (thinking on the opponent's time,
+        	 //also known as "permanent brain").
          } else if (!strncmp (res, "time", 4)) {
-                //Set a clock that always belongs to the engine.
+             //Set a clock that always belongs to the engine.
          } else if (!strncmp (res, "otim", 4)) {
-                //Set a clock that always belongs to the opponent.
+             //Set a clock that always belongs to the opponent.
          } else if (!strcmp (res, "post")) {
-                //Turn on thinking/pondering output.
+             //Turn on thinking/pondering output.
          } else if (!strcmp (res, "force")) {
-                //Set the engine to play neither color ("force mode").
-         } else if (!strcmp (res, "ls")) { //command line move
+             //Set the engine to play neither color ("force mode").
+         } else if (!strcmp (res, "ls")) {
+        	 //command line move
              //display list of moves
         	 engine.list_moves();
+        	 cout << endl;
          } else if (!strcmp(res, "?")) {
 			cout<<">> Available Commands:\n";
 			cout<<">> new	: Start a new game.\n";
@@ -78,15 +96,26 @@ int main() {
 		} else if (!strcmp(res, "undo")) {
 			engine.undolastmove();
 			engine.show_board();
+		} else if (!strcmp(res, "force")) {
+			/* Set the engine to play neither color ("force mode").
+			 * Stop clocks.
+			 * The engine should check that moves received in force mode are
+			 * legal and made in the proper turn, but should not think,
+			 * ponder, or make moves of its own.
+			 */
+			engineplay = 0;
+		} else if (!strcmp(res, "go")) {
+			/*
+			 * Leave force mode and set the engine to play the color that is on move.
+			 * Associate the engine's clock with the color that is on move,
+			 * the opponent's clock with the color that is not on move.
+			 * Start the engine's clock.
+			 * Start thinking and eventually make a move.
+			 */
+			engineplay = (engine.sidetomove()==white?PLAYWHITE:PLAYBLACK);
 		} else if (engine.domove(engine.input_move(res))>=0) {
-                //cout << "got correct move\n";
+                //got user/xboard move
                 engine.generate_moves();
-                if (!xboard)
-                   engine.list_moves();
-                cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
-                engine.generate_moves();
-                if (!xboard)
-                   engine.show_board();
          } else {
                 cout << "Error (unknown command): " << res << endl;
          }

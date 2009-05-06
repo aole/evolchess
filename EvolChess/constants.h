@@ -35,6 +35,10 @@ E.g.:	0 0 0 0 0 0 0 0
 //1: black
 enum side { white, black };
 
+// which side engine have to play
+const byte PLAYWHITE = 1;
+const byte PLAYBLACK = 2;
+
 //Numeric representation of each piece
 //0: king
 //1: queen
