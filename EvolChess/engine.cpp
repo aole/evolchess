@@ -669,17 +669,17 @@ void Engine::gen_king_moves(side movefor) {
 	if (!kingmoved[movefor]) {
 	   // castle towards filea
 	   if (!rookmoved[movefor][0]) {
-          if (movefor==white && !(all[white]&0xE)) {
+          if (movefor==white && !(all[white]&0xE) && (pieces[white][rook] & 0x1)) {
              push_move(lsb, 0x4, king, 0, FLAGCASTLEA | KINGMOVED, 0x1 | 0x8);
-          } else if (movefor==black && !(all[black]&0xE00000000000000LLU)) {
+          } else if (movefor==black && !(all[black]&0xE00000000000000LLU) && pieces[black][rook] & 0x100000000000000LLU) {
              push_move(lsb, 0x400000000000000LLU, king, 0, FLAGCASTLEA | KINGMOVED, 0x100000000000000LLU | 0x800000000000000LLU);
           }
        }
        // castle towards fileh
        if (!rookmoved[movefor][1]) {
-          if (movefor==white && !(all[white]&0x60)) {
+          if (movefor==white && !(all[white]&0x60) && pieces[white][rook] & 0x80) {
              push_move(lsb, 0x40, king, 0, FLAGCASTLEH | KINGMOVED, 0x80 | 0x20);
-          }else if (movefor==black && !(all[black]&0x6000000000000000LLU)) {
+          }else if (movefor==black && !(all[black]&0x6000000000000000LLU) && pieces[black][rook] & 0x8000000000000000LLU) {
              push_move(lsb, 0x4000000000000000LLU, king, 0, FLAGCASTLEH | KINGMOVED, 0x8000000000000000LLU | 0x2000000000000000LLU);
           }
        }
