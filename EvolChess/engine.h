@@ -16,6 +16,8 @@
 class cmove
 {
 public:
+	cmove *_prev;
+
 	bitboard from;//square from where piece is move
 	bitboard to;//square where piece ends up
 	bitboard mov2;//rook moves when castling
@@ -23,6 +25,23 @@ public:
 	byte promotedto;//piece to which the pawn is promoted to
 	byte flags;//tells us if the move is double or en passant
 	byte captured;//which piece was captured
+
+	cmove(){}
+	cmove(cmove *m) { from=m->from; to=m->to;  mov2=m->mov2; piece=m->piece; promotedto=m->promotedto; flags=m->flags; captured=m->captured; }
+};
+
+//dynamic stack for moves history
+class dmovestack {
+protected:
+	cmove *_top;
+	int _size;
+public:
+	dmovestack () { init(); }
+	void init() { _top = NULL; _size=0; while (_top!=NULL){ cmove *m=_top; _top=_top->_prev; delete m;} }
+	void  push(cmove move) { cmove *m = new cmove(move); m->_prev=_top; _top=m; _size++;}
+	cmove pop () { if (!_size) return NULL; _size--; cmove *m=_top; _top=m->_prev; return m; }
+	int size() { return _size; }
+	cmove lastmove() { return *_top; }
 };
 
 /*stack of moves
@@ -79,7 +98,7 @@ protected:
 	int kingmoved[2], rookmoved[2][2];
 
 	//history of moves done
-	cmovestack moveshistory;
+	dmovestack moveshistory;
 
 	//the stack
 	cmovestack stack;
