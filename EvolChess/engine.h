@@ -36,6 +36,8 @@ public:
 	int top;//to track how many moves are already in
 
 	cmove move[100];//max no. of moves possible at any position: we'll have to inc. it later.
+	int positionvalue[100];
+
 	bitboard allMoves;//all moves of all the pieces.
     char mov[8];
 
@@ -91,6 +93,7 @@ protected:
 	void gen_bishop_moves(byte piecefor, bitboard ar, side movefor);
 
 	void gen_atk_moves(side moveof, bitboard& atkbrd);
+	void gen_king_atk(side movefor, bitboard& atkbrd);
 	void gen_pawn_atk(side moveof, bitboard& atkbrd);
 	void gen_knight_atk(side moveof, bitboard& atkbrd);
 	void gen_rook_atk (side moveof, bitboard& atkbrd);

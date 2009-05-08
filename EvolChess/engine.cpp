@@ -201,9 +201,9 @@ void Engine::undomove(cmove m) {
 	//for castling purpose
 	if (m.piece==king && kingmoved[moveof] == moveno)
 		kingmoved[moveof] = 0;
-	if (m.piece==rook && m.from & filea & rookmoved[moveof][0] == moveno)
+	if (m.piece==rook && m.from & filea && rookmoved[moveof][0] == moveno)
 		rookmoved[moveof][0] = 0;
-	else if (m.piece==rook && m.from & fileh & rookmoved[moveof][1] == moveno)
+	else if (m.piece==rook && m.from & fileh && rookmoved[moveof][1] == moveno)
 		rookmoved[moveof][1] = 0;
 
 	//respawn captured piece
@@ -216,9 +216,33 @@ void Engine::undomove(cmove m) {
 }
 //
 int Engine::doaimove() {
-    // make a random move
-    if (stack.top==1) return domove(0);
-    return domove(rand() % stack.top);
+	int _top = 0;
+	int _selmoves[100];
+    // make best move according to board value
+    int max;
+
+	if (stack.top==1) return domove(0);
+
+    if (moveof==white) {
+    	max = -100000;
+    	for (int i=0; i<stack.top; i++){
+    		if (stack.positionvalue[i]>max) {
+    			max = stack.positionvalue[i];
+    		}
+    	}
+    } else {
+    	max = 100000;
+    	for (int i=0; i<stack.top; i++){
+    		if (stack.positionvalue[i]<max) {
+    			max = stack.positionvalue[i];
+    		}
+    	}
+    }
+	for (int i=0; i<stack.top; i++)
+		if (stack.positionvalue[i]==max)
+			_selmoves[_top++] = i;
+
+    return domove(_selmoves[rand() % _top]);
 }
 
 int Engine::domove(int index){
@@ -394,6 +418,25 @@ void Engine::push_move(bitboard f, bitboard t, byte moved, byte promto = 0, byte
 
 	// reject invalid moves
 	domove(stack.lastmove());
+    //calculate board value
+    int bv[] = {0, 0};
+    bitboard lsb;//last significant bit
+
+    for (int i=0; i<2; i++) {
+    	bitboard ap = all[i];
+		while (ap)
+		{
+			lsb = ap & (~ap + 1);
+			for (int j=0;j<6;j++){
+				if (lsb & pieces[i][j]) {
+					bv[i] += piecevalue[j];
+					break;
+				}
+			}
+			ap ^= lsb;
+		}
+    }
+    stack.positionvalue[stack.top-1] = bv[white] - bv[black];
 	gen_atk_moves(moveof, atkmoves);
 	if (pieces[movenotof][king] & atkmoves)
 		incheck = 1;
@@ -649,6 +692,14 @@ void Engine::gen_king_moves(side movefor) {
           }
           ant ^= m;
     }
+}
+// generate king attack moves
+void Engine::gen_king_atk(side movefor, bitboard& atkbrd) {
+	//get king position
+	bitboard lsb = pieces[movefor][king];
+    int lsbint = get_bit_pos(lsb);
+	// get all moves on that position
+	atkbrd |= king_moves[lsbint] & all[movenotof];
 }
 // generate knight moves
 void Engine::gen_knight_moves(side movefor) {
@@ -942,6 +993,7 @@ void Engine::generate_moves(side movefor) {
 }
 //generate attack moves
 void Engine::gen_atk_moves(side moveof, bitboard& atkbrd){
+	gen_king_atk(moveof, atkbrd);
 	gen_pawn_atk(moveof, atkbrd);
 	gen_knight_atk(moveof, atkbrd);
 	gen_rook_atk(moveof, atkbrd);
@@ -949,6 +1001,8 @@ void Engine::gen_atk_moves(side moveof, bitboard& atkbrd){
 }
 //display available moves
 void Engine::list_moves() {
-    for (int i=0; i<stack.top; i++)
-        cout << stack.getMoveTxt(i) << ", ";
+    for (int i=0; i<stack.top; i++) {
+        cout << stack.getMoveTxt(i);
+        cout << "(" << (stack.positionvalue[i]) << "), ";
+    }
 }
