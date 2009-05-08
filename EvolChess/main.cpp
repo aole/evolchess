@@ -13,7 +13,7 @@ using namespace std;
 
 //main function; entry point
 int main() {
-     int xboard = 0;
+     int xboard = 0, xforce = 1;
      byte engineplay = 0;
      Engine engine;
 
@@ -29,11 +29,10 @@ int main() {
 
      for (;;) {
     	 //check if engine has to move
-    	 if (!engine.gameended) {
+    	 if (!engine.gameended && !xforce) {
 			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
 				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
 				 cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
-				 cout.flush();
 				 engine.generate_moves();
 				 if (!xboard)
 					engine.show_board();
@@ -65,6 +64,7 @@ int main() {
              if (!xboard)
             	 engine.show_board();
              engineplay = PLAYBLACK;
+             xforce = 0;
          } else if (!strcmp(res, "random")) {
              // ignore random command
          } else if (!strncmp (res, "level", 5)) {
@@ -80,12 +80,13 @@ int main() {
              //Turn on thinking/pondering output.
          } else if (!strcmp (res, "force")) {
              //Set the engine to play neither color ("force mode").
+        	 engineplay = 0;
          } else if (!strncmp (res, "result", 6)) {
         	 // game ended
         	 engine.gameended = 1;
         	 if (!xboard)
         		 cout<<res;
-         }else if (!strcmp (res, "ls")) {
+         } else if (!strcmp (res, "ls")) {
         	 //command line move
              //display list of moves
         	 engine.list_moves();
@@ -103,7 +104,15 @@ int main() {
 		} else if (!strcmp(res, "undo")) {
 			engine.undolastmove();
             engine.generate_moves();
-			engine.show_board();
+            if (!xboard)
+            	engine.show_board();
+		} else if (!strcmp(res, "black")) {
+            engineplay = PLAYBLACK;
+            xforce = 1;
+		} else if (!strcmp(res, "white")) {
+            engineplay = PLAYWHITE;
+            xforce = 1;
+		} else if (!strcmp(res, "computer")) {
 		} else if (!strcmp(res, "force")) {
 			/* Set the engine to play neither color ("force mode").
 			 * Stop clocks.
@@ -112,6 +121,7 @@ int main() {
 			 * ponder, or make moves of its own.
 			 */
 			engineplay = 0;
+            xforce = 1;
 		} else if (!strcmp(res, "go")) {
 			/*
 			 * Leave force mode and set the engine to play the color that is on move.
@@ -121,6 +131,7 @@ int main() {
 			 * Start thinking and eventually make a move.
 			 */
 			engineplay = (engine.sidetomove()==white?PLAYWHITE:PLAYBLACK);
+            xforce = 0;
 		} else if (engine.domove(engine.input_move(res))>=0) {
                 //got user/xboard move
 			if (!xboard)
