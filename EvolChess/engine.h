@@ -35,7 +35,7 @@ class cmovestack
 public:
 	int top;//to track how many moves are already in
 
-	cmove move[50];//max no. of moves possible at any position: we'll have to inc. it later.
+	cmove move[100];//max no. of moves possible at any position: we'll have to inc. it later.
 	bitboard allMoves;//all moves of all the pieces.
     char mov[8];
 
@@ -49,6 +49,7 @@ public:
 
 	//pop the last move
 	cmove pop(){ return move[--top]; };
+	cmove lastmove() { return move[top-1]; };
 
 	//find if the move exists in the stack
 	int find (bitboard f, bitboard t, int promto);
@@ -67,6 +68,8 @@ protected:
 	side moveof;
 	//side not to move
 	side movenotof;
+	//move number
+	byte moveno;
 
 	//this is the square where the adversary will capture
 	//if move is e2e4 then epsq will be e3
@@ -87,7 +90,14 @@ protected:
 	void gen_rook_moves(byte piecefor, bitboard ar, side movefor);
 	void gen_bishop_moves(byte piecefor, bitboard ar, side movefor);
 
+	void gen_atk_moves(side moveof, bitboard& atkbrd);
+	void gen_pawn_atk(side moveof, bitboard& atkbrd);
+	void gen_knight_atk(side moveof, bitboard& atkbrd);
+	void gen_rook_atk (side moveof, bitboard& atkbrd);
+	void gen_bishop_atk (side moveof, bitboard& atkbrd);
 public:
+	int gameended;
+
 	Engine();
 	virtual ~Engine();
 
@@ -96,7 +106,9 @@ public:
 
 	int sidetomove() { return moveof; };
 	int domove(int index);
+	void domove (cmove move);
 	int doaimove();
+	void undomove(cmove m);
 	void undolastmove();
 	int input_move(char *m);
 

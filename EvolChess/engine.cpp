@@ -14,7 +14,7 @@
 using namespace std;
 
 void cmovestack::push(bitboard f, bitboard t, byte moved, byte captured = 0, byte promto = 0, byte flags = 0, bitboard mov2 = 0) {
-    allMoves |= t;
+	allMoves |= t;
     move[top].from = f;
     move[top].to = t;
     move[top].mov2 = mov2;
@@ -31,8 +31,8 @@ int cmovestack::find (bitboard f, bitboard t, int promto = 0) {
 	for (int i=0; i<top; i++)
 	//operation '&' should do here as all these(variables)
 	//will have only one bit activated.
-	if (move[i].from == f && move[i].to == t && move[i].promotedto == promto)
-		return i;
+		if (move[i].from == f && move[i].to == t && move[i].promotedto == promto)
+			return i;
 	//if we didnt find the move then return '-1' representing error for us.
 	return -1;
 }
@@ -126,6 +126,8 @@ Engine::~Engine() {}
 void Engine::newGame() {
 	stack.init();
 	moveshistory.init();
+	moveno=0;
+	gameended = 0;
 	//place all white and black pieces
 	for (int s=0; s<2; s++)
 	{
@@ -161,9 +163,7 @@ void Engine::show_board()
 				{
 					strcpy(toprint, notationw[i]);
 					break;
-				}
-			for (int i=0;i<6;i++)
-				if (pieces[black][i] & p)
+				}else if (pieces[black][i] & p)
 				{
 					strcpy(toprint, notationb[i]);
 					break;
@@ -177,42 +177,62 @@ void Engine::show_board()
 		cout<<f<<" ";
 	cout<<endl;
 }
+
+void Engine::undolastmove(){
+	undomove(moveshistory.lastmove());
+}
 //undo last move
-void Engine::undolastmove() {
-	cmove m = moveshistory.pop();
+void Engine::undomove(cmove m) {
 	//switch move of
 	moveof = movenotof;
 	movenotof = (moveof==white?black:white);
 	//undo move
 	all[moveof] ^= (m.from | m.to);
-	pieces[moveof][m.piece] ^= (m.from | m.to);
+	if (m.promotedto){
+		pieces[moveof][m.piece] ^= m.from;
+		pieces[moveof][m.promotedto] ^= m.to;
+	} else
+		pieces[moveof][m.piece] ^= (m.from | m.to);
 	//undo II move if there
 	if (m.mov2) {
 		all[moveof] ^= m.mov2;
 		pieces[moveof][rook] ^= m.mov2;
 	}
+	//for castling purpose
+	if (m.piece==king && kingmoved[moveof] == moveno)
+		kingmoved[moveof] = 0;
+	if (m.piece==rook && m.from & filea & rookmoved[moveof][0] == moveno)
+		rookmoved[moveof][0] = 0;
+	else if (m.piece==rook && m.from & fileh & rookmoved[moveof][1] == moveno)
+		rookmoved[moveof][1] = 0;
+
 	//respawn captured piece
 	if (m.captured) {
 		all[movenotof] |= m.to;
 		pieces[movenotof][m.captured] |= m.to;
 	}
+	moveshistory.pop();
+	moveno--;
 }
 //
 int Engine::doaimove() {
-	int rndm;
     // make a random move
-    rndm = rand() % stack.top;
-    return domove(rndm);
+    if (stack.top==1) return domove(0);
+    return domove(rand() % stack.top);
 }
-//change the board according to the move
-//we get the move from the index to the moves stack.
-int Engine::domove(int index)
-{
+
+int Engine::domove(int index){
     if (index < 0)
        return index;
 
-    cmove move = stack.move[index];
-
+	domove(stack.move[index]);
+	return index;
+}
+//change the board according to the move
+//we get the move from the index to the moves stack.
+void Engine::domove(cmove move)
+{
+	moveno++;
 	bitboard f = move.from;
 	bitboard t = move.to;
 	bitboard mov = f | t, mov2 = move.mov2;
@@ -232,13 +252,13 @@ int Engine::domove(int index)
 	  [all] ^ [mov] =[result]
 	*/
 	// check if king was moved. cannot castle then
-	if (f & pieces[moveof][king])
-	    kingmoved[moveof] = 1;
+	if (f & pieces[moveof][king] && !kingmoved[moveof])
+	    kingmoved[moveof] = moveno;
     // check if rook was moved. in that case, cannot castle with that rook
-    if (f & pieces[moveof][rook] && f & filea)
-        rookmoved[moveof][0] = 1;
-    else if (f & pieces[moveof][rook] && f & fileh)
-        rookmoved[moveof][1] = 1;
+    if (f & pieces[moveof][rook] && f & filea && !rookmoved[moveof][0])
+        rookmoved[moveof][0] = moveno;
+    else if (f & pieces[moveof][rook] && f & fileh && !rookmoved[moveof][1])
+        rookmoved[moveof][1] = moveno;
 
 	all[moveof] ^= mov;
 	//check which piece was that and move it
@@ -292,8 +312,6 @@ int Engine::domove(int index)
 
 	//record the move
 	moveshistory.push(move);
-
-	return index;
 }
 
 //input that we got from the user
@@ -357,7 +375,9 @@ int Engine::get_bit_pos(bitboard b) {
 }
 //push move to the moves stack
 void Engine::push_move(bitboard f, bitboard t, byte moved, byte promto = 0, byte flags = 0, bitboard mov2 = 0){
-	byte cap = 0;
+	byte cap = 0, incheck = 0;
+	bitboard atkmoves = 0;
+
 	if (t & all[movenotof]){
 		if (t & pieces[movenotof][pawn])
 			cap=pawn;
@@ -371,6 +391,15 @@ void Engine::push_move(bitboard f, bitboard t, byte moved, byte promto = 0, byte
 			cap=queen;
 	}
 	stack.push (f, t, moved, cap, promto, flags, mov2);
+
+	// reject invalid moves
+	domove(stack.lastmove());
+	gen_atk_moves(moveof, atkmoves);
+	if (pieces[movenotof][king] & atkmoves)
+		incheck = 1;
+	undomove(stack.lastmove());
+	if (incheck)
+		stack.pop();
 }
 
 //generate moves for a given pawn position
@@ -491,7 +520,7 @@ void Engine::gen_pawn_moves(side movefor) {
 			c = lsb >> 9;
 			c &= ~fileh;
 			if (c & epsq)
-				push_move (lsb, c, 0, FLAGENPASSANT);
+				push_move (lsb, c, pawn, 0, FLAGENPASSANT);
 			c &= all[white];
 			if (c)
 			{
@@ -525,6 +554,60 @@ void Engine::gen_pawn_moves(side movefor) {
 		ap ^= lsb;
 	}
 }
+//generate attack moves for pawn
+void Engine::gen_pawn_atk(side movefor, bitboard& atkbrd) {
+	//iterate thru' all the pawns
+	bitboard ap = pieces[movefor][pawn];//all pawns
+	bitboard lsb;//last significant bit
+	bitboard c;//moved to position, captured to position
+
+	while (ap)
+	{
+		/*this is a good code to get the last significant bit.
+		works like this:
+		ap				= 00101100
+		~ap				= 11010011
+		~ap + 1			= 11010100
+		ap & (~ap + 1)	= 00000100
+		*/
+		lsb = ap & (~ap + 1);
+		//if they are white
+		if (movefor==white)
+		{
+			//lets checkout capture squares
+			//capturing on right?
+			c = lsb << 9;
+			//make sure it doesnt hit the wall
+			c &= ~filea;
+			//make sure it captures adversary only
+			c &= all[black];
+			//record capture
+			atkbrd |= c;
+			//capture on left!
+			c = lsb << 7;
+			c &= ~fileh;
+			c &= all[black];
+			atkbrd |= c;
+		}
+		//same goes for the black pawns
+		//just for the fact that they move in opposite direction.
+		else
+		{
+			//capture moves for black
+			c = lsb >> 9;
+			c &= ~fileh;
+			c &= all[white];
+			atkbrd |= c;
+
+			c = lsb >> 7;
+			c &= ~filea;
+			c &= all[white];
+			atkbrd |= c;
+		}
+		//remove the lsb from pawns bits
+		ap ^= lsb;
+	}
+}
 // generate king moves
 void Engine::gen_king_moves(side movefor) {
     // squares not occupied by our pieces
@@ -544,17 +627,17 @@ void Engine::gen_king_moves(side movefor) {
 	   // castle towards filea
 	   if (!rookmoved[movefor][0]) {
           if (movefor==white && !(all[white]&0xE)) {
-             push_move(lsb, 0x4, king, 0, FLAGCASTLEA, 0x1 | 0x8);
+             push_move(lsb, 0x4, king, 0, FLAGCASTLEA | KINGMOVED, 0x1 | 0x8);
           } else if (movefor==black && !(all[black]&0xE00000000000000LLU)) {
-             push_move(lsb, 0x400000000000000LLU, king, 0, FLAGCASTLEA, 0x100000000000000LLU | 0x800000000000000LLU);
+             push_move(lsb, 0x400000000000000LLU, king, 0, FLAGCASTLEA | KINGMOVED, 0x100000000000000LLU | 0x800000000000000LLU);
           }
        }
        // castle towards fileh
        if (!rookmoved[movefor][1]) {
           if (movefor==white && !(all[white]&0x60)) {
-             push_move(lsb, 0x40, king, 0, FLAGCASTLEH, 0x80 | 0x20);
+             push_move(lsb, 0x40, king, 0, FLAGCASTLEH | KINGMOVED, 0x80 | 0x20);
           }else if (movefor==black && !(all[black]&0x6000000000000000LLU)) {
-             push_move(lsb, 0x4000000000000000LLU, king, 0, FLAGCASTLEH, 0x8000000000000000LLU | 0x2000000000000000LLU);
+             push_move(lsb, 0x4000000000000000LLU, king, 0, FLAGCASTLEH | KINGMOVED, 0x8000000000000000LLU | 0x2000000000000000LLU);
           }
        }
     }
@@ -562,7 +645,7 @@ void Engine::gen_king_moves(side movefor) {
 	while (ant) {
           m = ant & (~ant + 1);
           if (m & othersq) {
-             push_move (lsb, m, king);
+             push_move (lsb, m, king, 0, KINGMOVED);
           }
           ant ^= m;
     }
@@ -595,8 +678,28 @@ void Engine::gen_knight_moves(side movefor) {
 		an ^= lsb;
     }
 }
+// generate knight attack moves
+void Engine::gen_knight_atk(side movefor, bitboard& atkbrd) {
+	//get position
+	bitboard an = pieces[movefor][knight];
+	bitboard lsb;//last significant bit
+    int lsbint;
+    bitboard ant/*all move to positions*/;
+    //iterate thru' all knights
+	while (an) {
+		lsb = an & (~an + 1);
+		lsbint = get_bit_pos(lsb);
+		// get all knight moves on that position
+		ant = knight_moves[lsbint];
+		// loop thru' all moves
+		atkbrd |= ant & all[movenotof];
+		//remove the lsb from pawns bits
+		an ^= lsb;
+    }
+}
 // generate rook moves
 void Engine::gen_rook_moves(byte piecefor, bitboard ar, side movefor) {
+	byte flag = 0;
     // squares not occupied by our pieces
 	bitboard othersq = ~all[movefor];
 	// squares occupied by all pieces
@@ -643,10 +746,68 @@ void Engine::gen_rook_moves(byte piecefor, bitboard ar, side movefor) {
 		while (_dm) {
               m = _dm & (~_dm + 1);
               if (m & othersq) {
-                 push_move (lsb, m, piecefor);
+            	  if (piecefor==rook) {
+            		  if (lsb & filea && rookmoved[movefor][0]==0)
+            			  flag = ROOKMOVED;
+            		  else if (lsb & fileh && rookmoved[movefor][1]==0)
+            			  flag = ROOKMOVED;
+            		  else
+            			  flag = 0;
+            	  } else
+            		  flag = 0;
+            	  push_move (lsb, m, piecefor, 0, flag);
               }
               _dm ^= m;
         }
+		ar ^= lsb;
+    }
+}
+// generate rook attack moves
+void Engine::gen_rook_atk(side movefor, bitboard& atkbrd) {
+    // squares not occupied by our pieces
+	bitboard othersq = ~all[movefor];
+	// squares occupied by all pieces
+	bitboard _all = all[white] | all[black];
+
+	bitboard lsb;//last significant bit
+    int lsbint;
+    bitboard _rm, _lm, _um, _dm;
+    //iterate thru' all rooks/queens
+    bitboard ar = pieces[movefor][rook] | pieces[movefor][queen];
+	while (ar) {
+		lsb = ar & (~ar + 1);
+		lsbint = get_bit_pos(lsb);
+		//generate moves to the right
+		_rm = right_moves[lsbint] & _all;
+		_rm = _rm << 1 | _rm << 2 | _rm << 3 | _rm << 4 | _rm << 5 | _rm << 6;
+		_rm &= right_moves[lsbint];
+		_rm ^= right_moves[lsbint];
+		_rm &= othersq;
+
+        // generate moves to the left
+		_lm = left_moves[lsbint] & _all;
+    	_lm = _lm >> 1 | _lm >> 2 | _lm >> 3 | _lm >> 4 | _lm >> 5 | _lm >> 6;
+		_lm &= left_moves[lsbint];
+		_lm ^= left_moves[lsbint];
+		_lm &= othersq;
+
+        // generate moves to the top
+		_um = up_moves[lsbint] & _all;
+		_um = _um << 8 | _um << 16 | _um << 24 | _um << 32 | _um << 40 | _um << 48;
+		_um &= up_moves[lsbint];
+		_um ^= up_moves[lsbint];
+		_um &= othersq;
+
+        // generate moves to the bottom
+		_dm = down_moves[lsbint] & _all;
+		_dm = _dm >> 8 | _dm >> 16 | _dm >> 24 | _dm >> 32 | _dm >> 40 | _dm >> 48;
+		_dm &= down_moves[lsbint];
+		_dm ^= down_moves[lsbint];
+		_dm &= othersq;
+
+		// loop thru' all moves
+		_dm = _dm | _um | _lm | _rm;
+		atkbrd |= _dm & all[movenotof];
 		ar ^= lsb;
     }
 }
@@ -705,6 +866,55 @@ void Engine::gen_bishop_moves(byte piecefor, bitboard ab, side movefor){
 		ab ^= lsb;
     }
 }
+// generate bishop attack moves
+void Engine::gen_bishop_atk(side movefor, bitboard& atkbrd){
+    // squares not occupied by our pieces
+	bitboard othersq = ~all[movefor];
+	// squares occupied by all pieces
+	bitboard _all = all[white] | all[black];
+
+	bitboard lsb;//last significant bit
+    int lsbint;
+    bitboard _45m, _225m, _135m, _315m;
+    //iterate thru' all bishops/queens
+    bitboard ab = pieces[movefor][bishop] | pieces[movefor][queen];
+	while (ab) {
+		lsb = ab & (~ab + 1);
+		lsbint = get_bit_pos(lsb);
+		//generate moves for diagonally right up
+		_45m = deg45_moves[lsbint] & _all;
+		_45m = _45m << 9 | _45m << 18 | _45m << 27 | _45m << 36 | _45m << 45 | _45m << 54;
+		_45m &= deg45_moves[lsbint];
+		_45m ^= deg45_moves[lsbint];
+		_45m &= othersq;
+
+        // generate moves for left down
+		_225m = deg225_moves[lsbint] & _all;
+		_225m = _225m >> 9 | _225m >> 18 | _225m >> 27 | _225m >> 36 | _225m >> 45 | _225m >> 54;
+		_225m &= deg225_moves[lsbint];
+		_225m ^= deg225_moves[lsbint];
+		_225m &= othersq;
+
+        // generate moves right down
+		_135m = deg135_moves[lsbint] & _all;
+		_135m = _135m >> 7 | _135m >> 14 | _135m >> 21 | _135m >> 28 | _135m >> 35 | _135m >> 42;
+		_135m &= deg135_moves[lsbint];
+		_135m ^= deg135_moves[lsbint];
+		_135m &= othersq;
+
+        // generate moves for left up
+		_315m = deg315_moves[lsbint] & _all;
+		_315m = _315m << 7 | _315m << 14 | _315m << 21 | _315m << 28 | _315m << 35 | _315m << 42;
+		_315m &= deg315_moves[lsbint];
+		_315m ^= deg315_moves[lsbint];
+		_315m &= othersq;
+
+		// loop thru' all moves
+		_315m = _315m | _135m | _225m | _45m;
+		atkbrd |= _315m & all[movenotof];
+		ab ^= lsb;
+    }
+}
 //generate moves for the given on the current board position
 void Engine::generate_moves(side movefor) {
 	//empty the stack
@@ -719,8 +929,25 @@ void Engine::generate_moves(side movefor) {
 	gen_bishop_moves (bishop, pieces[movefor][bishop], movefor);
 	gen_knight_moves (movefor);
 	gen_pawn_moves (movefor);
-}
 
+	if (!stack.top){
+		// no moves. mate!
+		if (moveof==white)
+			cout << "0-1 {Black mates}\n";
+		else
+			cout << "1-0 {White mates}\n";
+		cout.flush();
+		gameended = 1;
+	}
+}
+//generate attack moves
+void Engine::gen_atk_moves(side moveof, bitboard& atkbrd){
+	gen_pawn_atk(moveof, atkbrd);
+	gen_knight_atk(moveof, atkbrd);
+	gen_rook_atk(moveof, atkbrd);
+	gen_bishop_atk(moveof, atkbrd);
+}
+//display available moves
 void Engine::list_moves() {
     for (int i=0; i<stack.top; i++)
         cout << stack.getMoveTxt(i) << ", ";

@@ -29,13 +29,15 @@ int main() {
 
      for (;;) {
     	 //check if engine has to move
-    	 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
-    	    ((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
-             cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
-             cout.flush();
-             engine.generate_moves();
-             if (!xboard)
-                engine.show_board();
+    	 if (!engine.gameended) {
+			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
+				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
+				 cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
+				 cout.flush();
+				 engine.generate_moves();
+				 if (!xboard)
+					engine.show_board();
+			 }
     	 }
 
     	 //get user/xboard input
@@ -78,7 +80,12 @@ int main() {
              //Turn on thinking/pondering output.
          } else if (!strcmp (res, "force")) {
              //Set the engine to play neither color ("force mode").
-         } else if (!strcmp (res, "ls")) {
+         } else if (!strncmp (res, "result", 6)) {
+        	 // game ended
+        	 engine.gameended = 1;
+        	 if (!xboard)
+        		 cout<<res;
+         }else if (!strcmp (res, "ls")) {
         	 //command line move
              //display list of moves
         	 engine.list_moves();
@@ -95,6 +102,7 @@ int main() {
 			engine.show_board();
 		} else if (!strcmp(res, "undo")) {
 			engine.undolastmove();
+            engine.generate_moves();
 			engine.show_board();
 		} else if (!strcmp(res, "force")) {
 			/* Set the engine to play neither color ("force mode").
@@ -115,9 +123,11 @@ int main() {
 			engineplay = (engine.sidetomove()==white?PLAYWHITE:PLAYBLACK);
 		} else if (engine.domove(engine.input_move(res))>=0) {
                 //got user/xboard move
-                engine.generate_moves();
+			if (!xboard)
+				engine.show_board();
+            engine.generate_moves();
          } else {
-                cout << "Error (unknown command): " << res << endl;
+            cout << "Illegal move: " << res << endl;
          }
      }
      cout << "Thank u for playing! Have a nice Day...\n";
