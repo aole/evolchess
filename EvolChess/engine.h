@@ -26,8 +26,11 @@ public:
 	byte flags;//tells us if the move is double or en passant
 	byte captured;//which piece was captured
 
-	cmove(){}
-	cmove(cmove *m) { from=m->from; to=m->to;  mov2=m->mov2; piece=m->piece; promotedto=m->promotedto; flags=m->flags; captured=m->captured; }
+	cmove (){}
+	cmove (cmove *m) { from=m->from; to=m->to;  mov2=m->mov2; piece=m->piece; promotedto=m->promotedto; flags=m->flags; captured=m->captured; }
+	cmove (bitboard f, bitboard t, bitboard m2=0, byte p=0, byte pt=0, byte flg=0, byte c=0) {
+		from = f; to = t; mov2 = m2; piece = p; promotedto = pt; flags = flg; captured = c;
+	}
 };
 
 //dynamic stack for moves history
@@ -103,6 +106,13 @@ protected:
 	//the stack
 	cmovestack stack;
 
+	//check if the user/xboard move is valid or not
+	cmove *check_move (bitboard f, bitboard t, int promto);
+	cmove *check_piece_move (bitboard f, bitboard t, int promto, int cap);
+	bitboard gen_rook_moves2(bitboard rp, side movefor);
+	bitboard gen_bishop_moves2(bitboard rp, side movefor);
+
+	//generate next moves
 	void push_move(bitboard f, bitboard t, byte moved, byte promto, byte flags, bitboard mov2);
 	void generate_moves(side moveof);
 	void gen_pawn_moves(side movefor);
@@ -132,7 +142,7 @@ public:
 	int doaimove();
 	void undomove(cmove m);
 	void undolastmove();
-	int input_move(char *m);
+	cmove *input_move(char *m);
 
 	int get_bit_pos(bitboard b);
 	void generate_moves() { generate_moves(moveof); };

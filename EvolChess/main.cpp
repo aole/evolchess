@@ -33,7 +33,6 @@ int main() {
 			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
 				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
 				 cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
-				 engine.generate_moves();
 				 if (!xboard)
 					engine.show_board();
 			 }
@@ -60,10 +59,9 @@ int main() {
               * Leave force mode and set the engine to play Black.
               */
         	 engine.newGame();
-			 engine.generate_moves();
              if (!xboard)
             	 engine.show_board();
-             engineplay = PLAYBLACK;
+             //engineplay = PLAYBLACK;
              xforce = 0;
          } else if (!strcmp(res, "random")) {
              // ignore random command
@@ -86,11 +84,11 @@ int main() {
         	 engine.gameended = 1;
         	 if (!xboard)
         		 cout<<res;
-         } else if (!strcmp (res, "ls")) {
+         /*} else if (!strcmp (res, "ls")) {
         	 //command line move
              //display list of moves
         	 engine.list_moves();
-        	 cout << endl;
+        	 cout << endl;*/
          } else if (!strcmp(res, "?")) {
 			cout<<">> Available Commands:\n";
 			cout<<">> new	: Start a new game.\n";
@@ -103,7 +101,6 @@ int main() {
 			engine.show_board();
 		} else if (!strcmp(res, "undo")) {
 			engine.undolastmove();
-            engine.generate_moves();
             if (!xboard)
             	engine.show_board();
 		} else if (!strcmp(res, "black")) {
@@ -132,11 +129,10 @@ int main() {
 			 */
 			engineplay = (engine.sidetomove()==white?PLAYWHITE:PLAYBLACK);
             xforce = 0;
-		} else if (engine.domove(engine.input_move(res))>=0) {
+		} else if (engine.input_move(res)) {
                 //got user/xboard move
 			if (!xboard)
 				engine.show_board();
-            engine.generate_moves();
          } else {
             cout << "Illegal move: " << res << endl;
          }
