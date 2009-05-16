@@ -11,10 +11,12 @@
 #define ENGINE_H_
 
 #include "constants.h"
+#include "debug.h"
 
 //move structure to store moves
-class cmove
-{
+class cmove {
+private:
+    char mov[8];
 public:
 	cmove *_prev;
 
@@ -31,6 +33,27 @@ public:
 	cmove (bitboard f, bitboard t, bitboard m2=0, byte p=0, byte pt=0, byte flg=0, byte c=0) {
 		from = f; to = t; mov2 = m2; piece = p; promotedto = pt; flags = flg; captured = c;
 	}
+	char *getMoveTxt();
+};
+//moves tree for ai
+class MoveNode {
+protected:
+	void init() { move=NULL;child=NULL;next=NULL;score=0; }
+public:
+	// the move
+	cmove *move;
+	// moves that can be played after this one
+	MoveNode *child;
+	// siblings
+	MoveNode *next;
+	// static position score after this move
+	int score;
+
+	virtual ~MoveNode () { if (move) delete move; }
+
+	MoveNode(){init();}
+	MoveNode(cmove *m) { init(); move=m; }
+	void addChild(cmove *m){if (!m) return;MoveNode *n = new MoveNode(m); n->next = child; child = n;}
 };
 
 //dynamic stack for moves history
@@ -41,47 +64,15 @@ protected:
 public:
 	dmovestack () { init(); }
 	void init() { _top = NULL; _size=0; while (_top!=NULL){ cmove *m=_top; _top=_top->_prev; delete m;} }
-	void  push(cmove move) { cmove *m = new cmove(move); m->_prev=_top; _top=m; _size++;}
+	void  push(cmove *move) { move->_prev=_top; _top=move; _size++;}
 	cmove pop () { if (!_size) return NULL; _size--; cmove *m=_top; _top=m->_prev; return m; }
 	int size() { return _size; }
-	cmove lastmove() { return *_top; }
-};
-
-/*stack of moves
-We dont really need it now but it will be
-helpfull in future version where we will
-implement computer play (AI)
-*/
-class cmovestack
-{
-public:
-	int top;//to track how many moves are already in
-
-	cmove move[100];//max no. of moves possible at any position: we'll have to inc. it later.
-	int positionvalue[100];
-
-	bitboard allMoves;//all moves of all the pieces.
-    char mov[8];
-
-    void init() {
-         allMoves = 0;
-         top = 0;
-    }
-	//store a move in stack and increment the top
-	void push(bitboard f, bitboard t, byte moved, byte captured, byte promto, byte flags, bitboard mov2);
-	void push(cmove m) { move[top++] = m; };
-
-	//pop the last move
-	cmove pop(){ return move[--top]; };
-	cmove lastmove() { return move[top-1]; };
-
-	//find if the move exists in the stack
-	int find (bitboard f, bitboard t, int promto);
-
-	char *getMoveTxt(int index);
+	cmove *lastmove() { return _top; }
 };
 
 class Engine {
+private:
+    cdebug debug;
 protected:
 	// board to store position of all black n white pieces
 	bitboard all[2];
@@ -94,6 +85,8 @@ protected:
 	side movenotof;
 	//move number
 	byte moveno;
+	//mate flag
+	int isMate;
 
 	//this is the square where the adversary will capture
 	//if move is e2e4 then epsq will be e3
@@ -104,7 +97,7 @@ protected:
 	dmovestack moveshistory;
 
 	//the stack
-	cmovestack stack;
+	//cmovestack stack;
 
 	//check if the user/xboard move is valid or not
 	cmove *check_move (bitboard f, bitboard t, int promto);
@@ -113,13 +106,13 @@ protected:
 	bitboard gen_bishop_moves2(bitboard rp, side movefor);
 
 	//generate next moves
-	void push_move(bitboard f, bitboard t, byte moved, byte promto, byte flags, bitboard mov2);
-	void generate_moves(side moveof);
-	void gen_pawn_moves(side movefor);
-	void gen_king_moves(side movefor);
-	void gen_knight_moves(side movefor);
-	void gen_rook_moves(byte piecefor, bitboard ar, side movefor);
-	void gen_bishop_moves(byte piecefor, bitboard ar, side movefor);
+	cmove *create_move(bitboard f, bitboard t, byte moved, byte promto, byte flags, bitboard mov2);
+	void generate_moves(MoveNode *par);
+	void gen_pawn_moves(MoveNode *par);
+	void gen_king_moves(MoveNode *par);
+	void gen_knight_moves(MoveNode *par);
+	void gen_rook_moves(byte piecefor, bitboard ar, MoveNode *par);
+	void gen_bishop_moves(byte piecefor, bitboard ar, MoveNode *par);
 
 	void gen_atk_moves(side moveof, bitboard& atkbrd);
 	void gen_king_atk(side movefor, bitboard& atkbrd);
@@ -127,6 +120,11 @@ protected:
 	void gen_knight_atk(side moveof, bitboard& atkbrd);
 	void gen_rook_atk (side moveof, bitboard& atkbrd);
 	void gen_bishop_atk (side moveof, bitboard& atkbrd);
+
+	int next_ply_best_score(MoveNode *par, int depth);
+	int static_position_score();
+	void cleannode(MoveNode *node);
+
 public:
 	int gameended;
 
@@ -134,21 +132,19 @@ public:
 	virtual ~Engine();
 
 	void newGame();
+	int isMateMove() { return isMate; }
 	void show_board();
+	void list_moves();
+
+	cmove *doaimove();
 
 	int sidetomove() { return moveof; };
-	int domove(int index);
-	void domove (cmove move);
-	int doaimove();
-	void undomove(cmove m);
+	void domove (cmove *move);
+	void undomove(cmove *move);
 	void undolastmove();
 	cmove *input_move(char *m);
 
 	int get_bit_pos(bitboard b);
-	void generate_moves() { generate_moves(moveof); };
-
-	void list_moves();
-	char *getMoveTxt(int index) { return stack.getMoveTxt(index); }
 };
 
 

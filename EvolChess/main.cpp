@@ -16,6 +16,7 @@ int main() {
      int xboard = 0, xforce = 1;
      byte engineplay = 0;
      Engine engine;
+     cmove *move;
 
      cin.rdbuf()->pubsetbuf(NULL,0);
      srand ( time(NULL) );
@@ -32,7 +33,23 @@ int main() {
     	 if (!engine.gameended && !xforce) {
 			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
 				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
-				 cout << "move " << engine.getMoveTxt(engine.doaimove()) << "\n";
+				 move = engine.doaimove();
+				 if (!move) {
+					 if (engine.sidetomove() == black)
+						 cout << "1-0 {White mates}\n";
+					 else
+						 cout << "0-1 {Black mates}\n";
+					 engine.gameended = 1;
+				 }
+				 else
+					 cout << "move " << move->getMoveTxt() << "\n";
+				 if (engine.isMateMove()){
+					 if (engine.sidetomove() == black)
+						 cout << "1-0 {White mates}\n";
+					 else
+						 cout << "0-1 {Black mates}\n";
+					 engine.gameended = 1;
+				 }
 				 if (!xboard)
 					engine.show_board();
 			 }
@@ -61,7 +78,7 @@ int main() {
         	 engine.newGame();
              if (!xboard)
             	 engine.show_board();
-             //engineplay = PLAYBLACK;
+             engineplay = PLAYBLACK;
              xforce = 0;
          } else if (!strcmp(res, "random")) {
              // ignore random command
@@ -84,11 +101,6 @@ int main() {
         	 engine.gameended = 1;
         	 if (!xboard)
         		 cout<<res;
-         /*} else if (!strcmp (res, "ls")) {
-        	 //command line move
-             //display list of moves
-        	 engine.list_moves();
-        	 cout << endl;*/
          } else if (!strcmp(res, "?")) {
 			cout<<">> Available Commands:\n";
 			cout<<">> new	: Start a new game.\n";
@@ -97,6 +109,8 @@ int main() {
 			cout<<">> <move>: Enter move in format e2e4, b8c6 etc.\n";
 			cout<<">> ?	: Ofcourse, this help.\n";
 			cout<<">> exit	: Bye; see u; tata; chao.\n\n";
+		} else if (!strcmp(res, "ls")) {
+			engine.list_moves();
 		} else if (!strcmp(res, "show")) {
 			engine.show_board();
 		} else if (!strcmp(res, "undo")) {
@@ -130,13 +144,14 @@ int main() {
 			engineplay = (engine.sidetomove()==white?PLAYWHITE:PLAYBLACK);
             xforce = 0;
 		} else if (engine.input_move(res)) {
-                //got user/xboard move
+            //got user/xboard move
 			if (!xboard)
 				engine.show_board();
          } else {
             cout << "Illegal move: " << res << endl;
          }
      }
+
      cout << "Thank u for playing! Have a nice Day...\n";
      return 0;
 }
