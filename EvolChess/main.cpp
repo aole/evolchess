@@ -34,6 +34,10 @@ int main() {
 			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
 				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
 				 move = engine.doaimove();
+				 if (engine.isDraw()) {
+					 cout << "1/2-1/2";
+					 engine.gameended = 1;
+				 }
 				 if (!move) {
 					 if (engine.sidetomove() == black)
 						 cout << "1-0 {White mates}\n";
