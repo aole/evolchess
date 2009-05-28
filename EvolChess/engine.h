@@ -40,7 +40,7 @@ public:
 //moves tree for ai
 class MoveNode {
 protected:
-	void init() { move=NULL;child=NULL;next=NULL;score=0; }
+	void init() { move=NULL;child=NULL;next=NULL;score=0;movesgenerated=0; }
 public:
 	// the move
 	cmove *move;
@@ -50,8 +50,9 @@ public:
 	MoveNode *next;
 	// static position score after this move
 	int score;
+	byte movesgenerated;
 
-	virtual ~MoveNode () { if (move) delete move; }
+	virtual ~MoveNode () { if (move) delete move; move=NULL; }
 
 	MoveNode(){init();}
 	MoveNode(cmove *m) { init(); move=m; }

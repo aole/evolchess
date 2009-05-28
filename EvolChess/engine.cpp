@@ -241,28 +241,32 @@ void Engine::cleannode(MoveNode *node) {
 	if (node->next)
 		cleannode(node->next);
 	delete node;
+	node = NULL;
 }
 // ai with Negamax Search
 cmove *Engine::doaimove() {
-	time_t t1;
-	int best_score, depth = MAX_AI_SEARCH_DEPTH;
+	time_t t1, t2;
+	int best_score;
 	MoveNode *dummy_node = new MoveNode;
 	MoveNode *bm = new MoveNode;
 
 	//start timer
 	t1 = clock();
 
-	prosnodes = 0;
-	//Alpha-Beta Pruning
-	int alpha = -INFINITE, beta = INFINITE;
+	for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
+		prosnodes = 0;
+		//Alpha-Beta Pruning
+		int alpha = -INFINITE, beta = INFINITE;
 
-	best_score = next_ply_best_score(dummy_node, depth, alpha, beta, bm);
-
-	if (!dummy_node->child) {
-		cout << "elapsed:" << (clock() - t1) << endl;
-		return NULL;
+		best_score = next_ply_best_score(dummy_node, depth, alpha, beta, bm);
+		t2 = clock() - t1;
+		if (!dummy_node->child) {
+			cout << "elapsed:" << t2 << endl;
+			return NULL;
+		}
+		if (t2 > 5000)
+			break;
 	}
-
 	if (!bm->child)
 		bm->child = dummy_node->child;
 	cmove *move = new cmove(bm->child->move);
@@ -274,7 +278,7 @@ cmove *Engine::doaimove() {
 	delete bm;
 	cleannode(dummy_node);
 
-	cout << "elapsed:" << (clock() - t1) << "; prossesed:" << prosnodes << endl;
+	cout << "elapsed:" << t2 << "; prossesed:" << prosnodes << endl;
 	return move;
 }
 MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
@@ -322,39 +326,43 @@ int Engine::checkfordraw() {
 //
 int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 		MoveNode *bm) {
-	generate_moves(par);
+	int cur_score, best_score = -INFINITE, newnodes = 0;
+	MoveNode *par2;
+
 	depth--;
-	int cur_score, best_score = -INFINITE;
+	if (!par->movesgenerated) {
+		generate_moves(par);
+		par->movesgenerated = newnodes = 1;
+	}
 
 	if (!par->child)
 		return best_score * (depth + 1);
 	if (checkfordraw())
 		return 0;
 
-	MoveNode *par2 = new MoveNode;
-	//get static scores for this level and sort them
-	for (MoveNode *cur = par->child; cur;) {
-		prosnodes++;
-		domove(cur->move);
-		cur_score = static_position_score();
-		cur->score = cur_score;
-		undolastmove();
-		cur = insert_sort(par2, cur);
+	if (!newnodes) {
+		par2 = new MoveNode;
+		//get static scores for this level and sort them
+		for (MoveNode *cur = par->child; cur;) {
+			cur = insert_sort(par2, cur);
+		}
+		par->child = par2->child;
+		delete par2;
+		par2 = NULL;
 	}
-	//delete par;
-	par->child = par2->child;
-	delete par2;
 
 	for (MoveNode *cur = par->child; cur; cur = cur->next) {
-		if (!depth)
-			cur_score = cur->score;
-		else {
-			domove(cur->move);
+		domove(cur->move);
+		if (!depth) {
+			prosnodes++;
+			cur_score = static_position_score();
+			cur->score = cur_score;
+		} else {
 			cur_score = -next_ply_best_score(cur, depth, -beta, -alpha, NULL);
-			//cur_score = - next_ply_best_score (cur, depth, -alpha-1, -alpha, NULL);
-			undolastmove();
 			cur->score = cur_score;
 		}
+		undolastmove();
+
 		if (cur_score > best_score) {
 			if (bm)
 				bm->child = cur;
@@ -365,6 +373,9 @@ int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 		if (alpha >= beta) {
 			if (bm)
 				bm->child = cur;
+			//if (depth==1)
+			for (cur = cur->next; cur; cur = cur->next)
+				cur->score = -INFINITE;
 			return alpha;
 		}
 	}
@@ -835,7 +846,6 @@ void Engine::gen_king_moves(MoveNode *par) {
 	ant = king_moves[lsbint];
 
 	// generate castling move if allowed
-	// TODO: need to check for check
 	if (!kingmoved[moveof]) {
 		// castle towards filea
 		if (!rookmoved[moveof][0]) {
