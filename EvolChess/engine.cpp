@@ -278,7 +278,7 @@ cmove *Engine::doaimove() {
 	delete bm;
 	cleannode(dummy_node);
 
-	cout << "elapsed:" << t2 << "; prossesed:" << prosnodes << endl;
+	//cout << "elapsed:" << t2 << "; prossesed:" << prosnodes << endl;
 	return move;
 }
 MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
@@ -305,7 +305,9 @@ MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
 	prev->next = c;
 	return toreturn;
 }
+
 int Engine::checkfordraw() {
+	// check for 3fold move
 	moveshist *cur = moveshistory.lastmove();
 	bitboard p1, p2;
 	if (moveshistory.size() > 8) {
@@ -335,10 +337,10 @@ int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 		par->movesgenerated = newnodes = 1;
 	}
 
-	if (!par->child)
-		return best_score * (depth + 1);
 	if (checkfordraw())
 		return 0;
+	if (!par->child)
+		return best_score * (depth + 1);
 
 	if (!newnodes) {
 		par2 = new MoveNode;
@@ -406,9 +408,9 @@ int Engine::static_position_score() {
 			ap ^= lsb;
 		}
 		//check for center pawns
-		if (pieces[i][pawn] & 0x1818000000LLU)
+		if (pieces[i][pawn] & 0x1818000000ULL)
 			bv[i] += 2;
-		if (pieces[i][pawn] & 0x181818180000LLU)
+		if (pieces[i][pawn] & 0x181818180000ULL)
 			bv[i]++;
 
 		//check for castling
@@ -418,21 +420,21 @@ int Engine::static_position_score() {
 				bv[i] += 10;
 			}
 		} else {
-			if (pieces[i][king] & 0x4000000000000000LLU && !(all[i]
-					& 0x8000000000000000LLU) && pieces[i][pawn]
-					& 0xE000000000000000LLU) {
+			if (pieces[i][king] & 0x4000000000000000ULL && !(all[i]
+					& 0x8000000000000000ULL) && pieces[i][pawn]
+					& 0xE000000000000000ULL) {
 				bv[i] += 10;
 			}
 		}
 		//knights in the middle
-		if (pieces[i][knight] & 0x1818000000LLU)
+		if (pieces[i][knight] & 0x1818000000ULL)
 			bv[i] += 1;
-		if (pieces[i][knight] & 0x3C3C3C3C0000LLU)
+		if (pieces[i][knight] & 0x3C3C3C3C0000ULL)
 			bv[i] += 1;
 		//bishops on principle diagonals
-		if (pieces[i][bishop] & (0x8040201008040201LLU | 0x0804020180402010LLU))
+		if (pieces[i][bishop] & (0x8040201008040201ULL | 0x0804020180402010ULL))
 			bv[i] += 1;
-		if (pieces[i][bishop] & (0xC0E070381C0E0703LLU | 0x03070E1C3870E0C0LLU))
+		if (pieces[i][bishop] & (0xC0E070381C0E0703ULL | 0x03070E1C3870E0C0ULL))
 			bv[i] += 1;
 		//rook on open file
 		if (pieces[i][rook] & filea && !(pieces[i][pawn] & filea))
@@ -624,12 +626,12 @@ cmove *Engine::create_move(bitboard f, bitboard t, byte moved, byte promto = 0,
 	if (flags & FLAGCASTLEA) {
 		if (moveof == black && 0x18 & atkmoves)
 			incheck = 1;
-		else if (moveof == white && 0x1800000000000000LLU & atkmoves)
+		else if (moveof == white && 0x1800000000000000ULL & atkmoves)
 			incheck = 1;
 	} else if (flags & FLAGCASTLEH) {
 		if (moveof == black && 0x30 & atkmoves)
 			incheck = 1;
-		else if (moveof == white && 0x3000000000000000LLU & atkmoves)
+		else if (moveof == white && 0x3000000000000000ULL & atkmoves)
 			incheck = 1;
 	}
 	undomove(m);
@@ -852,11 +854,11 @@ void Engine::gen_king_moves(MoveNode *par) {
 			if (moveof == white && !(_all & 0xE) && (pieces[white][rook] & 0x1)) {
 				par->addChild(create_move(lsb, 0x4, king, 0, FLAGCASTLEA
 						| KINGMOVED, 0x1 | 0x8));
-			} else if (moveof == black && !(_all & 0xE00000000000000LLU)
-					&& pieces[black][rook] & 0x100000000000000LLU) {
-				par->addChild(create_move(lsb, 0x400000000000000LLU, king, 0,
-						FLAGCASTLEA | KINGMOVED, 0x100000000000000LLU
-								| 0x800000000000000LLU));
+			} else if (moveof == black && !(_all & 0xE00000000000000ULL)
+					&& pieces[black][rook] & 0x100000000000000ULL) {
+				par->addChild(create_move(lsb, 0x400000000000000ULL, king, 0,
+						FLAGCASTLEA | KINGMOVED, 0x100000000000000ULL
+								| 0x800000000000000ULL));
 			}
 		}
 		// castle towards fileh
@@ -864,11 +866,11 @@ void Engine::gen_king_moves(MoveNode *par) {
 			if (moveof == white && !(_all & 0x60) && pieces[white][rook] & 0x80) {
 				par->addChild(create_move(lsb, 0x40, king, 0, FLAGCASTLEH
 						| KINGMOVED, 0x80 | 0x20));
-			} else if (moveof == black && !(_all & 0x6000000000000000LLU)
-					&& pieces[black][rook] & 0x8000000000000000LLU) {
-				par->addChild(create_move(lsb, 0x4000000000000000LLU, king, 0,
-						FLAGCASTLEH | KINGMOVED, 0x8000000000000000LLU
-								| 0x2000000000000000LLU));
+			} else if (moveof == black && !(_all & 0x6000000000000000ULL)
+					&& pieces[black][rook] & 0x8000000000000000ULL) {
+				par->addChild(create_move(lsb, 0x4000000000000000ULL, king, 0,
+						FLAGCASTLEH | KINGMOVED, 0x8000000000000000ULL
+								| 0x2000000000000000ULL));
 			}
 		}
 	}
@@ -1396,10 +1398,10 @@ cmove *Engine::check_piece_move(bitboard f, bitboard t, int promto, int cap) {
 					return new cmove(f, t, 0x1 | 0x8, king, 0, FLAGCASTLEA
 							| KINGMOVED);
 				} else if (moveof == black && !((all[white] | all[black])
-						& 0xE00000000000000LLU) && pieces[black][rook]
-						& 0x100000000000000LLU) {
-					return new cmove(f, t, 0x100000000000000LLU
-							| 0x800000000000000LLU, king, 0, FLAGCASTLEA
+						& 0xE00000000000000ULL) && pieces[black][rook]
+						& 0x100000000000000ULL) {
+					return new cmove(f, t, 0x100000000000000ULL
+							| 0x800000000000000ULL, king, 0, FLAGCASTLEA
 							| KINGMOVED);
 				}
 			}
@@ -1410,10 +1412,10 @@ cmove *Engine::check_piece_move(bitboard f, bitboard t, int promto, int cap) {
 					return new cmove(f, t, 0x80 | 0x20, king, 0, FLAGCASTLEH
 							| KINGMOVED);
 				} else if (moveof == black && !((all[white] | all[black])
-						& 0x6000000000000000LLU) && pieces[black][rook]
-						& 0x8000000000000000LLU) {
-					return new cmove(f, t, 0x8000000000000000LLU
-							| 0x2000000000000000LLU, king, 0, FLAGCASTLEH
+						& 0x6000000000000000ULL) && pieces[black][rook]
+						& 0x8000000000000000ULL) {
+					return new cmove(f, t, 0x8000000000000000ULL
+							| 0x2000000000000000ULL, king, 0, FLAGCASTLEH
 							| KINGMOVED);
 				}
 			}
