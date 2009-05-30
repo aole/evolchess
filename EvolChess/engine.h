@@ -114,6 +114,8 @@ protected:
 
 	//history of moves done
 	dmovestack moveshistory;
+	//current best move
+	cmove *bestmove;
 
 	//the stack
 	//cmovestack stack;
@@ -146,8 +148,11 @@ protected:
 	void cleannode(MoveNode *node);
 
 	int checkfordraw();
+
+	static void findbestmove();
 public:
 	int gameended;
+    static Engine *curengine;
 
 	Engine();
 	virtual ~Engine();

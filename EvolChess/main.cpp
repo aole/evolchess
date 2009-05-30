@@ -21,8 +21,7 @@ int main() {
      cin.rdbuf()->pubsetbuf(NULL,0);
      srand ( time(NULL) );
 
- 	 cout<<"\nWelcome to Bhupendra Aole's Evolution Chess Program!\n";
-     cout<<"Version 0.05 Date Created: 1-Apr-2009\n";
+ 	 cout<<"\nWelcome to Evolution Chess Program!\n";
 	 cout<<"Copyright 2009 Bhupendra Aole\n\n";
 
      //response buffer
@@ -56,6 +55,7 @@ int main() {
 				 }
 				 if (!xboard)
 					engine.show_board();
+				 if (move) delete move;
 			 }
     	 }
 

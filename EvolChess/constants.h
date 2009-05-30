@@ -48,10 +48,10 @@ const byte PLAYBLACK = 2;
 //5: pawn
 enum piece { king, queen, rook, bishop, knight, pawn };
 
-const char notationw[6][2] = { "K", "Q", "R", "B", "N", "P" };
-const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
-const int  piecevalue[6] = {100000, 900, 500, 300, 300, 100};
-const int  INFINITE = piecevalue[0];
+static const char notationw[6][2] = { "K", "Q", "R", "B", "N", "P" };
+static const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
+static const int  piecevalue[6] = {100000, 900, 500, 300, 300, 100};
+static const int  VALUEINFINITE = piecevalue[0];
 
 //initial position of all white and black pieces
 const bitboard start_all[2] = { 0xffff, 0xffff000000000000ULL };

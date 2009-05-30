@@ -12,6 +12,7 @@
 
 #include "engine.h"
 #include "debug.h"
+#include "windows.h"
 
 using namespace std;
 
@@ -243,43 +244,58 @@ void Engine::cleannode(MoveNode *node) {
 	delete node;
 	node = NULL;
 }
-// ai with Negamax Search
-cmove *Engine::doaimove() {
+// initialize static variable
+Engine *Engine::curengine = NULL;
+// ai thread function
+void Engine::findbestmove() {
 	time_t t1, t2;
 	int best_score;
 	MoveNode *dummy_node = new MoveNode;
 	MoveNode *bm = new MoveNode;
 
+	if (!curengine) {
+		curengine->bestmove = NULL;
+		return;
+	}
 	//start timer
 	t1 = clock();
 
 	for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
-		prosnodes = 0;
+		curengine->prosnodes = 0;
 		//Alpha-Beta Pruning
-		int alpha = -INFINITE, beta = INFINITE;
+		int alpha = -VALUEINFINITE, beta = VALUEINFINITE;
 
-		best_score = next_ply_best_score(dummy_node, depth, alpha, beta, bm);
+		best_score = curengine->next_ply_best_score(dummy_node, depth, alpha, beta, bm);
 		t2 = clock() - t1;
 		if (!dummy_node->child) {
 			cout << "elapsed:" << t2 << endl;
-			return NULL;
+			curengine->bestmove = NULL;
+			return;
 		}
 		if (t2 > 5000)
 			break;
 	}
 	if (!bm->child)
 		bm->child = dummy_node->child;
-	cmove *move = new cmove(bm->child->move);
-	domove(move);
+	curengine->bestmove = new cmove(bm->child->move);
+	curengine->domove(curengine->bestmove);
 
 	if (!bm->child->child)
-		ismate = 1;
+		curengine->ismate = 1;
 
 	delete bm;
-	cleannode(dummy_node);
+	curengine->cleannode(dummy_node);
 
-	//cout << "elapsed:" << t2 << "; prossesed:" << prosnodes << endl;
-	return move;
+	cout << "elapsed:" << t2 << "; prossesed:" << curengine->prosnodes << endl;
+}
+// ai with Negamax Search
+cmove *Engine::doaimove() {
+	curengine = this;
+
+	HANDLE th = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)findbestmove, NULL, 0, NULL);
+	WaitForSingleObject(th, INFINITE);
+
+	return bestmove;
 }
 MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
 	MoveNode *prev = NULL;
@@ -328,7 +344,7 @@ int Engine::checkfordraw() {
 //
 int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 		MoveNode *bm) {
-	int cur_score, best_score = -INFINITE, newnodes = 0;
+	int cur_score, best_score = -VALUEINFINITE, newnodes = 0;
 	MoveNode *par2;
 
 	depth--;
@@ -339,8 +355,9 @@ int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 
 	if (checkfordraw())
 		return 0;
-	if (!par->child)
+	if (!par->child) {
 		return best_score * (depth + 1);
+	}
 
 	if (!newnodes) {
 		par2 = new MoveNode;
@@ -377,7 +394,7 @@ int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
 				bm->child = cur;
 			//if (depth==1)
 			for (cur = cur->next; cur; cur = cur->next)
-				cur->score = -INFINITE;
+				cur->score = -VALUEINFINITE;
 			return alpha;
 		}
 	}
