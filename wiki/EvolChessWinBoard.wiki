@@ -13,6 +13,7 @@ The following content describes the configuration of a popular user interface fo
 
 3. Create a windows short cut to the winboard exe file:
 "X:\xxx\winboard.exe" -debug /cp /fcp=EvolChess /fd="Y:\yyy" /scp=GNUChess
+(somehow question mark is coming after EvolChess, do not include that).
 
 where X is the drive where winboard is installed and xxx is the installation directory pointing to winboard.exe.
 Y is similarly the drive where you have downloaded EvolChess.exe and yyy is the directory pointing to it.
