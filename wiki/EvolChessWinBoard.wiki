@@ -7,7 +7,7 @@ The following content describes the configuration of a popular user interface fo
 
 = Details =
 
-1. Download and install Winboard from http://tim-mann.org/xboard.html.
+1. Download and install [http://www.open-aurec.com/wbforum/viewtopic.php?t=49439 WinBoard].
 
 2. Download latest version of [http://code.google.com/p/evolchess/downloads/list Evolution Chess].
 
@@ -15,6 +15,6 @@ The following content describes the configuration of a popular user interface fo
 `"X:\xxx\winboard.exe" -debug /cp /fcp=EvolChess /fd="Y:\yyy" /scp=GNUChess`
 
 where X is the drive where winboard is installed and xxx is the installation directory pointing to winboard.exe.
-Y is similarly the drive where you have downloaded EvolChess.exe and yyy is the directory pointing to it.
+Y is similarly the drive where you have downloaded !EvolChess.exe and yyy is the directory pointing to it.
 
-4. Now run WinBoard using the shortcut just created and enjoy Evolution Chess with a nice UI.
+4. Now run !WinBoard using the shortcut just created and enjoy Evolution Chess with a nice UI.
