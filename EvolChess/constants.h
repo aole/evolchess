@@ -7,6 +7,9 @@
  *      Author: Bhupendra Aole
  */
 
+int const VERSION_MAJOR = 0;
+int const VERSION_MINOR = 6;
+
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
@@ -33,7 +36,7 @@ E.g.:	0 0 0 0 0 0 0 0
 */
 //0: white
 //1: black
-enum side { white, black };
+enum side { white = 0, black = 1 };
 
 // which side engine have to play
 const byte PLAYWHITE = 1;
@@ -53,22 +56,87 @@ static const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
 static const int  piecevalue[6] = {100000, 900, 500, 300, 300, 100};
 static const int  VALUEINFINITE = piecevalue[0];
 
-//initial position of all white and black pieces
-const bitboard start_all[2] = { 0xffff, 0xffff000000000000ULL };
-//initial position of individual white and black pieces
-const bitboard start_pieces[2][6] = {
-	{0x0000000000000010ULL, 0x0000000000000008ULL, 0x81, 0x24, 0x42, 0xff00},
-	{0x1000000000000000ULL, 0x0800000000000000ULL, 0x8100000000000000ULL, 0x2400000000000000ULL, 0x4200000000000000ULL, 0x00ff000000000000ULL}};
+//chess board constants
+const bitboard a8 = 0x100000000000000ULL;
+const bitboard b8 = 0x200000000000000ULL;
+const bitboard c8 = 0x400000000000000ULL;
+const bitboard d8 = 0x800000000000000ULL;
+const bitboard e8 = 0x1000000000000000ULL;
+const bitboard f8 = 0x2000000000000000ULL;
+const bitboard g8 = 0x4000000000000000ULL;
+const bitboard h8 = 0x8000000000000000ULL;
 
-//used for calculations later
+const bitboard a7 = 0x1000000000000ULL;
+const bitboard b7 = 0x2000000000000ULL;
+const bitboard c7 = 0x4000000000000ULL;
+const bitboard d7 = 0x8000000000000ULL;
+const bitboard e7 = 0x10000000000000ULL;
+const bitboard f7 = 0x20000000000000ULL;
+const bitboard g7 = 0x40000000000000ULL;
+const bitboard h7 = 0x80000000000000ULL;
+
+const bitboard a6 = 0x10000000000ULL;
+const bitboard b6 = 0x20000000000ULL;
+const bitboard c6 = 0x40000000000ULL;
+const bitboard d6 = 0x80000000000ULL;
+const bitboard e6 = 0x100000000000ULL;
+const bitboard f6 = 0x200000000000ULL;
+const bitboard g6 = 0x400000000000ULL;
+const bitboard h6 = 0x800000000000ULL;
+
+const bitboard a5 = 0x100000000ULL;
+const bitboard b5 = 0x200000000ULL;
+const bitboard c5 = 0x400000000ULL;
+const bitboard d5 = 0x800000000ULL;
+const bitboard e5 = 0x1000000000ULL;
+const bitboard f5 = 0x2000000000ULL;
+const bitboard g5 = 0x4000000000ULL;
+const bitboard h5 = 0x8000000000ULL;
+
+const bitboard a4 = 0x1000000ULL;
+const bitboard b4 = 0x2000000ULL;
+const bitboard c4 = 0x4000000ULL;
+const bitboard d4 = 0x8000000ULL;
+const bitboard e4 = 0x10000000ULL;
+const bitboard f4 = 0x20000000ULL;
+const bitboard g4 = 0x40000000ULL;
+const bitboard h4 = 0x80000000ULL;
+
+const bitboard a3 = 0x10000ULL;
+const bitboard b3 = 0x20000ULL;
+const bitboard c3 = 0x40000ULL;
+const bitboard d3 = 0x80000ULL;
+const bitboard e3 = 0x100000ULL;
+const bitboard f3 = 0x200000ULL;
+const bitboard g3 = 0x400000ULL;
+const bitboard h3 = 0x800000ULL;
+
+const bitboard a2 = 0x100ULL;
+const bitboard b2 = 0x200ULL;
+const bitboard c2 = 0x400ULL;
+const bitboard d2 = 0x800ULL;
+const bitboard e2 = 0x1000ULL;
+const bitboard f2 = 0x2000ULL;
+const bitboard g2 = 0x4000ULL;
+const bitboard h2 = 0x8000ULL;
+
+const bitboard a1 = 0x1ULL;
+const bitboard b1 = 0x2ULL;
+const bitboard c1 = 0x4ULL;
+const bitboard d1 = 0x8ULL;
+const bitboard e1 = 0x10ULL;
+const bitboard f1 = 0x20ULL;
+const bitboard g1 = 0x40ULL;
+const bitboard h1 = 0x80ULL;
+
 const bitboard rank8 = 0xff00000000000000ULL;
 const bitboard rank7 = 0xff000000000000ULL;
 const bitboard rank6 = 0xff0000000000ULL;
 const bitboard rank5 = 0xff00000000ULL;
 const bitboard rank4 = 0xff000000ULL;
-const bitboard rank3 = 0xff0000;
+const bitboard rank3 = 0xff0000ULL;
 const bitboard rank2 = 0xff00ULL;
-const bitboard rank1 = 0xff;
+const bitboard rank1 = 0xffULL;
 const bitboard rank[] = {rank1,rank2,rank3,rank4,rank5,rank6,rank7,rank8};
 
 const bitboard filea = 0x0101010101010101ULL;
@@ -81,7 +149,14 @@ const bitboard fileg = 0x4040404040404040ULL;
 const bitboard fileh = 0x8080808080808080ULL;
 const bitboard file[] = {filea,fileb,filec,filed,filee,filef,fileg,fileh};
 
-//FLAGS used for camparison of flags in move class
+//initial position of all white and black pieces
+const bitboard start_all[2] = { rank1|rank2, rank7|rank8 };
+//initial position of individual white and black pieces
+const bitboard start_pieces[2][6] = {
+	{e1, d1, a1|h1, c1|f1, b1|g1, rank2},
+	{e8, d8, a8|h8, c8|f8, b8|g8, rank7}};
+
+//FLAGS used for comparison of flags in move class
 const byte FLAGDOUBLEMOVE = 1;
 const byte FLAGENPASSANT = 2;
 const byte FLAGCASTLEA = 4;
@@ -129,7 +204,7 @@ const bitboard knight_moves [] = {
       0x4400442800000000ULL, 0x8800885000000000ULL, 0x100010A000000000ULL, 0x2000204000000000ULL,//7
       0x04020000000000ULL, 0x08050000000000ULL, 0x110A0000000000ULL, 0x22140000000000ULL,
       0x44280000000000ULL, 0x88500000000000ULL, 0x10A00000000000ULL, 0x20400000000000ULL };//8
-// all the squres on right of the position
+// all the squares on right of the position
 // used for rook and queen
 const bitboard right_moves [] = {
       0xFEULL, 0xFCULL, 0xF8ULL, 0xF0ULL,
@@ -148,7 +223,7 @@ const bitboard right_moves [] = {
       0xE0000000000000ULL, 0xC0000000000000ULL, 0x80000000000000ULL, 0,
       0xFE00000000000000ULL, 0xFC00000000000000ULL, 0xF800000000000000ULL, 0xF000000000000000ULL,
       0xE000000000000000ULL, 0xC000000000000000ULL, 0x8000000000000000ULL, 0 };
-// all the squres on left of the position
+// all the squares on left of the position
 // used for rook and queen
 const bitboard left_moves [] = {
       0, 0x1, 0x3, 0x7,
@@ -167,7 +242,7 @@ const bitboard left_moves [] = {
       0xF000000000000ULL, 0x1F000000000000ULL, 0x3F000000000000ULL, 0x7F000000000000ULL,
       0, 0x100000000000000ULL, 0x300000000000000ULL, 0x700000000000000ULL,
       0xF00000000000000ULL, 0x1F00000000000000ULL, 0x3F00000000000000ULL, 0x7F00000000000000ULL};
-// all the squres up of the position
+// all the squares up of the position
 // used for rook and queen
 const bitboard up_moves [] = {
       0x0101010101010100ULL, 0x0202020202020200ULL, 0x0404040404040400ULL, 0x0808080808080800ULL,
@@ -186,7 +261,7 @@ const bitboard up_moves [] = {
       0x1000000000000000ULL, 0x2000000000000000ULL, 0x4000000000000000ULL, 0x8000000000000000ULL,
       0,0,0,0,
       0,0,0,0 };
-// all the squres down of the position
+// all the squares down of the position
 // used for rook and queen
 const bitboard down_moves [] = {
       0,0,0,0,
