@@ -6,6 +6,9 @@
  */
 
 #include <iostream>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
 #include "engine.h"
 
@@ -18,14 +21,16 @@ int main() {
      Engine engine;
      cmove *move;
 
-     cin.rdbuf()->pubsetbuf(NULL,0);
-     srand ( time(NULL) );
+     cin.rdbuf()->pubsetbuf(__null,0);
+     srand ( time(__null) );
 
- 	 cout<<"\nWelcome to Evolution Chess Program!\n";
-	 cout<<"Copyright 2009 Bhupendra Aole\n\n";
+ 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION_MAJOR<<"."<<VERSION_MINOR<<")\n";
+	 cout<<"Copyright 2011 Bhupendra Aole\n\n";
 
      //response buffer
      char res[500];
+
+     engine.init();
 
      for (;;) {
     	 //check if engine has to move
@@ -97,9 +102,6 @@ int main() {
              //Set a clock that always belongs to the opponent.
          } else if (!strcmp (res, "post")) {
              //Turn on thinking/pondering output.
-         } else if (!strcmp (res, "force")) {
-             //Set the engine to play neither color ("force mode").
-        	 engineplay = 0;
          } else if (!strncmp (res, "result", 6)) {
         	 // game ended
         	 engine.gameended = 1;
@@ -112,7 +114,7 @@ int main() {
 			cout<<">> ls    : Displays list of possible moves.\n";
 			cout<<">> <move>: Enter move in format e2e4, b8c6 etc.\n";
 			cout<<">> ?	: Ofcourse, this help.\n";
-			cout<<">> exit	: Bye; see u; tata; chao.\n\n";
+			cout<<">> quit	: Bye; see u; tata; chao.\n\n";
 		} else if (!strcmp(res, "ls")) {
 			engine.list_moves();
 		} else if (!strcmp(res, "show")) {

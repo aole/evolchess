@@ -13,6 +13,22 @@
 #include "constants.h"
 #include "debug.h"
 
+//move structure to store book moves
+class simplemove {
+public:
+	bitboard move;
+	simplemove *next;
+	simplemove *sibling;
+	int sibcnt;
+
+	simplemove(bitboard m){
+		move = m;
+		next = __null;
+		sibling = __null;
+		sibcnt = 0;
+	}
+};
+
 //move structure to store moves
 class cmove {
 private:
@@ -32,7 +48,7 @@ public:
 	}
 	char *getMoveTxt();
 	int isequal(cmove *m) {
-		if (from & m->from && to & m->to && piece==m->piece)
+		if ((from & m->from) && (to & m->to) && piece==m->piece)
 			return 1;
 		return 0;
 	}
@@ -40,7 +56,7 @@ public:
 //moves tree for ai
 class MoveNode {
 protected:
-	void init() { move=NULL;child=NULL;next=NULL;score=0;movesgenerated=0; }
+	void init() { move=__null;child=__null;next=__null;score=0;movesgenerated=0; }
 public:
 	// the move
 	cmove *move;
@@ -52,7 +68,7 @@ public:
 	int score;
 	byte movesgenerated;
 
-	virtual ~MoveNode () { if (move) delete move; move=NULL; }
+	virtual ~MoveNode () { if (move) delete move; move=__null; }
 
 	MoveNode(){init();}
 	MoveNode(cmove *m) { init(); move=m; }
@@ -64,7 +80,7 @@ public:
 	moveshist *prev;
 	bitboard allpos;
 
-	moveshist() { move=NULL; allpos = 0; }
+	moveshist() { move=__null; allpos = 0; }
 	~moveshist() { if (move) delete move; }
 
 	moveshist(cmove *m, bitboard b) { move = m; allpos = b; }
@@ -76,9 +92,9 @@ protected:
 	int _size;
 public:
 	dmovestack () { init(); }
-	void init() { _top = NULL; _size=0; while (_top!=NULL){ moveshist *m=_top; _top=_top->prev; delete m;} }
+	void init() { _top = __null; _size=0; while (_top!=__null){ moveshist *m=_top; _top=_top->prev; delete m;} }
 	void  push(moveshist *move) { move->prev=_top; _top=move; _size++;}
-	moveshist *pop () { if (!_size) return NULL; _size--; moveshist *m=_top; _top=m->prev; return m; }
+	moveshist *pop () { if (!_size) return __null; _size--; moveshist *m=_top; _top=m->prev; return m; }
 	int size() { return _size; }
 	moveshist *lastmove() { return _top; }
 };
@@ -87,6 +103,9 @@ class Engine {
 private:
     cdebug debug;
     int prosnodes;
+    simplemove *bktop;
+    simplemove *bkcurrent;
+
 protected:
 	// max depth for normal search
 	static const int MAX_AI_SEARCH_DEPTH = 5;
@@ -127,6 +146,7 @@ protected:
 	bitboard gen_bishop_moves2(bitboard rp, side movefor);
 
 	//generate next moves
+	cmove *create_move(bitboard mov);
 	cmove *create_move(bitboard f, bitboard t, byte moved, byte promto, byte flags, bitboard mov2);
 	void generate_moves(MoveNode *par);
 	void gen_pawn_moves(MoveNode *par);
@@ -157,11 +177,14 @@ public:
 	Engine();
 	virtual ~Engine();
 
+	void init();
+	void loadDefaultBook();
 	void newGame();
 	int isMateMove() { return ismate; }
 	int isDraw() { if (isthreefoldw==2 || isthreefoldb==2) return 1; return 0; }
 	void show_board();
 	void list_moves();
+	bitboard getBitMove(string m);
 
 	cmove *doaimove();
 
