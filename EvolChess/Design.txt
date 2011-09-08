@@ -1,0 +1,35 @@
+board class
+- move of info
+- all pieces position
+- each piece position
+- history of moves
+- first king/rook move
+- pawn double move
+- en passant square
+- captured piece history
+- domove() { does not check for legality }
+- undomove()
+- new()
+
+move class
+- from and to information
+
+movemanager class
+- creates and deletes move instances
+
+engine class
+- loads book
+
+---------
+engine.search
+. calculate max time for move
+. start timer
+. loop from 2 to max search depth
+. . findbestmove @depth
+. . set best move
+
+---------
+findbestmove
+. get all the moves
+. if depth is 0
+. evaluate and sort all the moves
