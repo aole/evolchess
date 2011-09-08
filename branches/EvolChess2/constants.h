@@ -7,11 +7,20 @@
  *      Author: Bhupendra Aole
  */
 
-int const VERSION_MAJOR = 0;
-int const VERSION_MINOR = 6;
-
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
+
+#ifndef NULL
+#ifdef __cplusplus
+#define NULL 0
+#else
+#define NULL ((void*)0)
+#endif
+#endif
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 6
+#define BUILD 5
 
 #include <stdint.h>
 

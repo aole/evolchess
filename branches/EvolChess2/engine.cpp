@@ -17,6 +17,12 @@
 
 using namespace std;
 
+// initialize static variable
+Engine *Engine::curengine = NULL;
+int cmove::cnt = 0;
+cmove *cmove::top = NULL;
+int moveshist::cnt = 0;
+
 char *cmove::getMoveTxt() {
 	if (from & filea)
 		mov[0] = 'a';
@@ -147,7 +153,7 @@ void Engine::loadDefaultBook() {
 	}
 	//read each line
 	fbk.close();
-	cout<<"book load complete!\n";
+	cout << "book load complete!\n";
 }
 //initializes the engine
 void Engine::init() {
@@ -176,6 +182,9 @@ void Engine::newGame() {
 
 	kingmoved[0] = kingmoved[1] = 0;
 	rookmoved[0][0] = rookmoved[0][1] = rookmoved[1][0] = rookmoved[1][1] = 0;
+
+	//
+	bestmove = new cmove(0, 0, 0);
 }
 
 //show the board on the console
@@ -224,7 +233,8 @@ void Engine::undolastmove() {
  11. undo individual move
  12. undo all
  */
-void Engine::undomove(cmove *move) {
+void Engine::undomove(cmove *move, int istemp) {
+	//cout<<"undo "<<move->getMoveTxt()<<endl;
 	cmove *lm = NULL;
 	bitboard t = move->to, f = move->from;
 	bitboard mov = f | t;
@@ -232,7 +242,8 @@ void Engine::undomove(cmove *move) {
 	moveof = movenotof;
 	movenotof = (moveof == white ? black : white);
 
-	moveshistory.pop();
+	if (!istemp)
+		delete moveshistory.pop();
 
 	if (moveof == white)
 		if (isthreefoldw)
@@ -291,64 +302,47 @@ void Engine::undomove(cmove *move) {
 	}
 	moveno--;
 }
-void Engine::cleannode(MoveNode *node) {
-	if (node->child)
-		cleannode(node->child);
-	if (node->next)
-		cleannode(node->next);
-	delete node;
-	node = NULL;
-}
-// initialize static variable
-Engine *Engine::curengine = NULL;
+
 // ai thread function
 void Engine::findbestmove() {
-	time_t t1, t2;
+	//time_t t1, t2;
 	int best_score;
-	MoveNode *dummy_node = new MoveNode;
-	MoveNode *bm = new MoveNode;
+	cmove bm(0, 0, 0);
 
-	if (!curengine) {
-		curengine->bestmove = NULL;
-		return;
-	}
 	//start timer
-	t1 = clock();
+	//t1 = clock();
 
-	for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
-		curengine->prosnodes = 0;
-		//Alpha-Beta Pruning
-		int alpha = -VALUEINFINITE, beta = VALUEINFINITE;
+	//for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
+	int depth = MAX_AI_SEARCH_DEPTH;
+	curengine->prosnodes = 0;
+	//Alpha-Beta Pruning
+	int alpha = -VALUEINFINITE, beta = VALUEINFINITE;
 
-		best_score = curengine->next_ply_best_score(dummy_node, depth, alpha,
-				beta, bm);
-		t2 = clock() - t1;
-		if (!dummy_node->child) {
-			cout << "elapsed:" << t2 << endl;
-			curengine->bestmove = NULL;
-			return;
-		}
-		if (t2 > 5000)
-			break;
-	}
-	if (!bm->child)
-		bm->child = dummy_node->child;
-	curengine->bestmove = new cmove(bm->child->move);
-	curengine->domove(curengine->bestmove);
+	best_score = curengine->next_ply_best_score(depth, alpha, beta, &bm);
 
-	if (!bm->child->child)
+	if (abs(best_score)>=VALUEINFINITE)
 		curengine->ismate = 1;
+	/*if (!bm.from) {
+		cout << "best move not found!\n";
+		return;
+	} else*/
+		curengine->bestmove->copy(&bm);
+	//t2 = clock() - t1;
+	//if (t2 > 5000)
+	//break;
+	//}
 
-	delete bm;
-	curengine->cleannode(dummy_node);
+	//curengine->domove(curengine->bestmove);
 
-	cout << "elapsed:" << t2 << "; prossesed:" << curengine->prosnodes << endl;
+	//cout << "elapsed:" << t2 << "; prossesed:" << MoveNode::cnt << endl;
 }
 // ai with Negamax Search
 cmove *Engine::doaimove() {
 	curengine = this;
 	cmove *bkmove;
 	simplemove *_sm;
+
+//	list_moves();
 
 	// check if book move is available
 	if (bkcurrent != NULL) {
@@ -366,12 +360,16 @@ cmove *Engine::doaimove() {
 			return bkmove;
 		}
 	}
-	HANDLE th = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) findbestmove,
-			NULL, 0, NULL);
-	WaitForSingleObject(th, INFINITE);
-
+	//HANDLE th = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) findbestmove,
+	//		NULL, 0, NULL);
+	//WaitForSingleObject(th, INFINITE);
+	//CloseHandle(th);
+	bestmove->set(0,0,0,0,0,0,0);
+	findbestmove();
+	domove(bestmove);
 	return bestmove;
 }
+
 MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
 	MoveNode *prev = NULL;
 	MoveNode *toreturn = c->next;
@@ -417,62 +415,58 @@ int Engine::checkfordraw() {
 	return 0;
 }
 //
-int Engine::next_ply_best_score(MoveNode *par, int depth, int alpha, int beta,
-		MoveNode *bm) {
-	int cur_score, best_score = -VALUEINFINITE, newnodes = 0;
-	MoveNode *par2;
-
-	depth--;
-	if (!par->movesgenerated) {
-		generate_moves(par);
-		par->movesgenerated = newnodes = 1;
-	}
+int Engine::next_ply_best_score(int depth, int alpha, int beta, cmove *bm) {
+	int cur_score, best_score = -VALUEINFINITE*100;
 
 	if (checkfordraw())
 		return 0;
-	if (!par->child) {
+
+	depth--;
+
+	MoveNode par;
+	generate_moves(&par);
+	//cout<<"gen\n";
+
+	if (!par.child) {
 		return best_score * (depth + 1);
 	}
-
-	if (!newnodes) {
-		par2 = new MoveNode;
-		//get static scores for this level and sort them
-		for (MoveNode *cur = par->child; cur;) {
-			cur = insert_sort(par2, cur);
-		}
-		par->child = par2->child;
-		delete par2;
-		par2 = NULL;
-	}
-
-	for (MoveNode *cur = par->child; cur; cur = cur->next) {
+	/*
+	 MoveNode *par2;
+	 par2 = MoveNode::newnode();
+	 //get static scores for this level and sort them
+	 for (MoveNode *cur = par->child; cur;) {
+	 cur = insert_sort(par2, cur);
+	 }
+	 par->child = par2->child;
+	 par2 = NULL;
+	 */
+	for (MoveNode *cur = par.child; cur; cur = cur->next) {
 		domove(cur->move);
 		if (!depth) {
 			prosnodes++;
 			cur_score = static_position_score();
 			cur->score = cur_score;
 		} else {
-			cur_score = -next_ply_best_score(cur, depth, -beta, -alpha, NULL);
+			cur_score = -next_ply_best_score(depth, -beta, -alpha, NULL);
 			cur->score = cur_score;
 		}
-		undolastmove();
+		undomove(cur->move);
 
 		if (cur_score > best_score) {
-			if (bm)
-				bm->child = cur;
+			if (bm) {
+				bm->copy(cur->move);
+			}
 			best_score = cur_score;
 		}
 		if (best_score > alpha)
 			alpha = best_score;
 		if (alpha >= beta) {
 			if (bm)
-				bm->child = cur;
-			//if (depth==1)
-			for (cur = cur->next; cur; cur = cur->next)
-				cur->score = -VALUEINFINITE;
+				bm->copy(cur->move);
 			return alpha;
 		}
 	}
+
 	return best_score;
 }
 //
@@ -564,7 +558,9 @@ int Engine::static_position_score() {
  12. switch sides
  *
  */
-void Engine::domove(cmove *move) {
+void Engine::domove(cmove *move, int istemp) {
+	//cout<<"do "<<move->getMoveTxt()<<endl;
+
 	bitboard f = move->from;
 	bitboard t = move->to;
 	bitboard mov = f | t, mov2 = move->mov2;
@@ -629,7 +625,8 @@ void Engine::domove(cmove *move) {
 
 	bitboard allpos = moveof == white ? all[white] : all[black];
 	//record the move
-	moveshistory.push(new moveshist(move, allpos));
+	if (!istemp)
+		moveshistory.push(new moveshist(move, allpos));
 
 	//change the sides
 	moveof = movenotof;
@@ -656,8 +653,8 @@ bitboard Engine::getBitMove(string m) {
 	return f | t;
 }
 //input that we got from the user
-cmove *Engine::input_move(char *m) {
-	cout<<"got move from user\n";
+int Engine::input_move(char *m) {
+	//cout << "got move from user\n";
 	bitboard f = 1, t = 1;
 	//initially we suppose its not a promotion move:
 	//cause its saved that way in cmove class
@@ -669,7 +666,7 @@ cmove *Engine::input_move(char *m) {
 	 */
 	if (m[0] < 'a' || m[0] > 'h' || m[1] < '1' || m[1] > '8' || m[2] < 'a'
 			|| m[2] > 'h' || m[3] < '1' || m[3] > '8')
-		return NULL;
+		return 0;
 
 	//convert into int
 	int from = ((m[1] - '1')) * 8;
@@ -686,7 +683,7 @@ cmove *Engine::input_move(char *m) {
 	if (((f & pieces[white][pawn]) && moveof == white && (t & rank8))
 			|| ((f & pieces[black][pawn]) && moveof == black && (t & rank1))) {
 		if (strlen(m) < 5)
-			return NULL;
+			return 0;
 		if (m[4] == 'q')
 			pt = queen;
 		else if (m[4] == 'r')
@@ -696,12 +693,14 @@ cmove *Engine::input_move(char *m) {
 		else if (m[4] == 'n')
 			pt = knight;
 		else
-			return NULL;
+			return 0;
 	}
 	cmove *mov = check_move(f, t, pt);
 
 	if (mov)
 		domove(mov);
+	else
+		return 0;
 	// check if book move
 	if (bkcurrent != __null) {
 		bkcurrent = bkcurrent->next;
@@ -712,7 +711,8 @@ cmove *Engine::input_move(char *m) {
 			bkcurrent = bkcurrent->sibling;
 		}
 	}
-	return mov;
+	cmove::deletecmove(mov);
+	return 1;
 }
 // get position of a bit in integer
 int Engine::get_bit_pos(bitboard b) {
@@ -758,7 +758,7 @@ cmove *Engine::create_move(bitboard f, bitboard t, byte moved, byte promto = 0,
 		}
 	}
 	// create cmove object
-	cmove *m = new cmove(f, t, mov2, moved, promto, flags, cap);
+	cmove *m = cmove::newcmove(f, t, mov2, moved, promto, flags, cap);
 
 	//if in check reject the move
 	domove(m);
@@ -778,8 +778,10 @@ cmove *Engine::create_move(bitboard f, bitboard t, byte moved, byte promto = 0,
 			incheck = 1;
 	}
 	undomove(m);
-	if (incheck)
+	if (incheck) {
+		cmove::deletecmove(m);
 		return NULL;
+	}
 	return m;
 }
 
@@ -1441,8 +1443,8 @@ cmove *Engine::check_move(bitboard f, bitboard t, int promto = 0) {
 	int cap = 0, incheck = 0;
 
 	//if from is not valid return 0:"<<f<<":"<<moveof<<"\n";
-	if (!(f & all[moveof])){
-		cout<<"from not valid\n";
+	if (!(f & all[moveof])) {
+		cout << "from not valid\n";
 		return NULL;
 	}
 	//if to is not valid return 0\n";
@@ -1460,12 +1462,12 @@ cmove *Engine::check_move(bitboard f, bitboard t, int promto = 0) {
 	if (!m)
 		return NULL;
 
-	domove(m);
+	domove(m, 1);
 	//if in check undo move and return 0\n";
 	gen_atk_moves(moveof, atkmoves);
 	if (pieces[movenotof][king] & atkmoves)
 		incheck = 1;
-	undomove(m);
+	undomove(m, 1);
 	if (incheck)
 		return NULL;
 	return m;
@@ -1481,64 +1483,64 @@ cmove *Engine::check_piece_move(bitboard f, bitboard t, int promto, int cap) {
 		// forward movement
 		if ((f << 8) & emptysq) {
 			if (t & (f << 8))
-				return new cmove(f, t, 0, pawn, promto);
+				return cmove::newcmove(f, t, 0, pawn, promto);
 			else if (t & (f << 16) & emptysq & rank4)
-				return new cmove(f, t, 0, pawn, 0, FLAGDOUBLEMOVE);
+				return cmove::newcmove(f, t, 0, pawn, 0, FLAGDOUBLEMOVE);
 		}
 		//capture
 		m = f << 9;
 		m &= ~filea;
 		if (t & m & epsq)
-			return new cmove(f, t, 0, pawn, 0, FLAGENPASSANT);
+			return cmove::newcmove(f, t, 0, pawn, 0, FLAGENPASSANT);
 		if (t & m & all[black])
-			return new cmove(f, t, 0, pawn, promto, 0, cap);
+			return cmove::newcmove(f, t, 0, pawn, promto, 0, cap);
 		m = f << 7;
 		m &= ~fileh;
 		if (t & m & epsq)
-			return new cmove(f, t, 0, pawn, 0, FLAGENPASSANT);
+			return cmove::newcmove(f, t, 0, pawn, 0, FLAGENPASSANT);
 		if (t & m & all[black])
-			return new cmove(f, t, 0, pawn, promto, 0, cap);
+			return cmove::newcmove(f, t, 0, pawn, promto, 0, cap);
 
 		//for black
 		if ((f >> 8) & emptysq) {
 			if (t & (f >> 8))
-				return new cmove(f, t, 0, pawn, promto);
+				return cmove::newcmove(f, t, 0, pawn, promto);
 			else if (t & (f >> 16) & emptysq & rank5)
-				return new cmove(f, t, 0, pawn, 0, FLAGDOUBLEMOVE);
+				return cmove::newcmove(f, t, 0, pawn, 0, FLAGDOUBLEMOVE);
 		}
 		//capture
 		m = f >> 9;
 		m &= ~fileh;
 		if (t & m & epsq)
-			return new cmove(f, t, 0, pawn, 0, FLAGENPASSANT);
+			return cmove::newcmove(f, t, 0, pawn, 0, FLAGENPASSANT);
 		if (t & m & all[white])
-			return new cmove(f, t, 0, pawn, promto, 0, cap);
+			return cmove::newcmove(f, t, 0, pawn, promto, 0, cap);
 		m = f >> 7;
 		m &= ~filea;
 		if (t & m & epsq)
-			return new cmove(f, t, 0, pawn, 0, FLAGENPASSANT);
+			return cmove::newcmove(f, t, 0, pawn, 0, FLAGENPASSANT);
 		if (t & m & all[white])
-			return new cmove(f, t, 0, pawn, promto, 0, cap);
+			return cmove::newcmove(f, t, 0, pawn, promto, 0, cap);
 	} else if (f & pieces[moveof][queen]) {
 		if ((t & gen_rook_moves2(f, moveof))
 				|| (t & gen_bishop_moves2(f, moveof)))
-			return new cmove(f, t, 0, queen, 0, 0, cap);
+			return cmove::newcmove(f, t, 0, queen, 0, 0, cap);
 	} else if (f & pieces[moveof][rook]) {
 		if (t & gen_rook_moves2(f, moveof))
-			return new cmove(f, t, 0, rook, 0, ROOKMOVED, cap);
+			return cmove::newcmove(f, t, 0, rook, 0, ROOKMOVED, cap);
 	} else if (f & pieces[moveof][bishop]) {
 		if (t & gen_bishop_moves2(f, moveof))
-			return new cmove(f, t, 0, bishop, 0, 0, cap);
+			return cmove::newcmove(f, t, 0, bishop, 0, 0, cap);
 	} else if (f & pieces[moveof][knight]) {
 		int intf = get_bit_pos(f);
 		m = knight_moves[intf] & ~all[moveof];
 		if (t & m)
-			return new cmove(f, t, 0, knight, 0, 0, cap);
+			return cmove::newcmove(f, t, 0, knight, 0, 0, cap);
 	} else if (f & pieces[moveof][king]) {
 		int intf = get_bit_pos(f);
 		m = king_moves[intf] & ~all[moveof];
 		if (t & m)
-			return new cmove(f, t, 0, king, 0, KINGMOVED, cap);
+			return cmove::newcmove(f, t, 0, king, 0, KINGMOVED, cap);
 
 		// generate castling move if allowed
 		// need to check for check
@@ -1547,12 +1549,12 @@ cmove *Engine::check_piece_move(bitboard f, bitboard t, int promto, int cap) {
 			if (!rookmoved[moveof][0] && (t & filec)) { // if file A rook hasnt moved
 				if (moveof == white && !((all[white] | all[black]) & 0xE)
 						&& (pieces[white][rook] & 0x1)) {
-					return new cmove(f, t, 0x1 | 0x8, king, 0,
+					return cmove::newcmove(f, t, 0x1 | 0x8, king, 0,
 							FLAGCASTLEA | KINGMOVED);
 				} else if (moveof == black
 						&& !((all[white] | all[black]) & 0xE00000000000000ULL)
 						&& (pieces[black][rook] & 0x100000000000000ULL)) {
-					return new cmove(f, t,
+					return cmove::newcmove(f, t,
 							0x100000000000000ULL | 0x800000000000000ULL, king,
 							0, FLAGCASTLEA | KINGMOVED);
 				}
@@ -1561,28 +1563,28 @@ cmove *Engine::check_piece_move(bitboard f, bitboard t, int promto, int cap) {
 			if (!rookmoved[moveof][1] && (t & fileg)) {
 				if (moveof == white && !((all[white] | all[black]) & 0x60)
 						&& (pieces[white][rook] & 0x80)) {
-					return new cmove(f, t, 0x80 | 0x20, king, 0,
+					return cmove::newcmove(f, t, 0x80 | 0x20, king, 0,
 							FLAGCASTLEH | KINGMOVED);
 				} else if (moveof == black
 						&& !((all[white] | all[black]) & 0x6000000000000000ULL)
 						&& (pieces[black][rook] & 0x8000000000000000ULL)) {
-					return new cmove(f, t,
+					return cmove::newcmove(f, t,
 							0x8000000000000000ULL | 0x2000000000000000ULL, king,
 							0, FLAGCASTLEH | KINGMOVED);
 				}
 			}
 		}
 	} else {
-		cout << "error\n";
+		cout << "error@check_piece_move\n";
 	}
 
 	return NULL;
 }
 
 void Engine::list_moves() {
-	MoveNode *dummy = new MoveNode;
-	generate_moves(dummy);
-	for (MoveNode *cur = dummy->child; cur; cur = cur->next)
+	MoveNode dummy;
+	generate_moves(&dummy);
+	for (MoveNode *cur = dummy.child; cur; cur = cur->next)
 		cout << cur->move->getMoveTxt() << "; ";
 	cout << endl;
 }
