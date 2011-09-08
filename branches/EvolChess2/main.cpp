@@ -24,7 +24,7 @@ int main() {
      cin.rdbuf()->pubsetbuf(__null,0);
      srand ( time(__null) );
 
- 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION_MAJOR<<"."<<VERSION_MINOR<<")\n";
+ 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION_MAJOR<<"."<<VERSION_MINOR<<"<"<<BUILD<<">)\n";
 	 cout<<"Copyright 2011 Bhupendra Aole\n\n";
 
      //response buffer
@@ -42,11 +42,11 @@ int main() {
 					 cout << "1/2-1/2";
 					 engine.gameended = 1;
 				 }
-				 if (!move) {
+				 if (!move->from) {
 					 if (engine.sidetomove() == black)
-						 cout << "1-0 {White mates}\n";
-					 else
 						 cout << "0-1 {Black mates}\n";
+					 else
+						 cout << "1-0 {White mates}\n";
 					 engine.gameended = 1;
 				 }
 				 else
@@ -60,7 +60,7 @@ int main() {
 				 }
 				 if (!xboard)
 					engine.show_board();
-				 if (move) delete move;
+				 cmove::deletecmove(move);
 			 }
     	 }
 
