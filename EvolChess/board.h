@@ -13,30 +13,50 @@
 
 class board {
 public:
+	 // TODO: change to dynamic array/stack
 	static const int MAX_MOVES = 300;
 
+#ifdef DEBUG
 	int isready;
+#endif
 
+	// side to move
 	side moveof;
 	side movenotof;
 
-	bitboard all[2]; 		// [side]
-	bitboard pieces[2][6]; 	// [side][piece]
+	// position
+	bitboard pall[2];
+	bitboard ppieces[2][6];
 
-	int currentmovenumber;
-	int capturedpiece[MAX_MOVES]; // [currentmovenumber]
-	bitboard history[MAX_MOVES]; 	// [currentmovenumber]
-	int kingmovedat[2]; 	// [side]
-	int rookmovedat[2][2]; 	// [side][0:a file, 1:h file]
-	int isdoublemove[MAX_MOVES];
-	bitboard enpasquare[MAX_MOVES];
+	/* castling rights */
+	// king moved at which move
+	int kingmovedat[2];
+	// rooks moved at which move
+	// 0: rook on a file; 1: rook on h file
+	int rookmovedat[2][2];
+
+	// en passant square
+	// will be set to square just before to what a pawn moved to
+	// only set in case of double pawn move else set to 0
+	// array is useful when undoing moves
+	bitboard enpasqr[MAX_MOVES];
+	bitboard enpapwn[MAX_MOVES];
+
+	// moves history
+	// 0 when game starts
+	int movenumber;
+	bitmove history[MAX_MOVES];
+	// which piece got captured at that move
+	piece captured[MAX_MOVES];
 
 public:
 	board();
+	~board();
+
 	void newgame();
-	void domove(bitmove m);
-	void undmove(bitmove m);
+	void domove(const bitmove &m);
 	void undolastmove();
+	int isCapture();
 };
 
 #endif /* BOARD_H_ */
