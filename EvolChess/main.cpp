@@ -14,6 +14,17 @@
 
 using namespace std;
 
+char *getcurtime() {
+     time_t curtime;
+
+	 time(&curtime);
+	 return ctime(&curtime);
+}
+
+void log(ofstream &f, char const *msg) {
+	f<<"# "<<getcurtime()<<msg<<endl;
+}
+
 //main function; entry point
 int main() {
      int xboard = 0, xforce = 1;
@@ -21,11 +32,16 @@ int main() {
      Engine engine;
      cmove *move;
 
-     cin.rdbuf()->pubsetbuf(__null,0);
-     srand ( time(__null) );
+     cin.rdbuf()->pubsetbuf(NULL,0);
+     srand ( time(NULL) );
 
- 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION_MAJOR<<"."<<VERSION_MINOR<<"<"<<BUILD<<">)\n";
+ 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION<<")\n";
 	 cout<<"Copyright 2011 Bhupendra Aole\n\n";
+
+	 // open conversation file
+	 ofstream confile;
+	 confile.open("conversation.log");
+	 log(confile, "# Program started");
 
      //response buffer
      char res[500];
@@ -58,20 +74,21 @@ int main() {
 						 cout << "0-1 {Black mates}\n";
 					 engine.gameended = 1;
 				 }
-				 if (!xboard)
-					engine.show_board();
+				 //if (!xboard)
+					//engine.show_board();
 				 cmove::deletecmove(move);
 			 }
     	 }
 
     	 //get user/xboard input
          cin.getline(res, 500);
+         log(confile, res);
 
          if (!strcmp(res, "xboard")) {
             // started by WinBoard
             xboard = 1;
          } else if (!strncmp(res, "protover", 8)) {
-                cout << "feature myname=\"Evolution Chess\" time=0\n";
+                cout << "feature myname=\"Evolution Chess\" time=0 reuse=0 analyze=0 done=1\n";
                 cout.flush();
          } else if (!strcmp(res, "quit")) {
                 //exit program
@@ -85,8 +102,8 @@ int main() {
               * Leave force mode and set the engine to play Black.
               */
         	 engine.newGame();
-             if (!xboard)
-            	 engine.show_board();
+             //if (!xboard)
+            	// engine.show_board();
              engineplay = PLAYBLACK;
              xforce = 0;
          } else if (!strcmp(res, "random")) {
@@ -157,6 +174,10 @@ int main() {
             cout << "Illegal move: " << res << endl;
          }
      }
+
+     // close conversation file
+     log(confile, "# Program ended");
+     confile.close();
 
      cout << "Thank u for playing! Have a nice Day...\n";
      return 0;

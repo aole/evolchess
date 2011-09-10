@@ -18,9 +18,10 @@
 #endif
 #endif
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 6
-#define BUILD 5
+#define MAJOR "0"
+#define MINOR "6"
+#define BUILD "6"
+#define VERSION MAJOR "." MINOR "." BUILD
 
 #include <stdint.h>
 
@@ -58,11 +59,11 @@ const byte PLAYBLACK = 2;
 //3: bishop
 //4: knight
 //5: pawn
-enum piece { king, queen, rook, bishop, knight, pawn };
+enum piece { none = -1, king, queen, rook, bishop, knight, pawn };
 
 static const char notationw[6][2] = { "K", "Q", "R", "B", "N", "P" };
 static const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
-static const int  piecevalue[6] = {100000, 900, 500, 300, 300, 100};
+static const int  piecevalue[6] = {100000, 900, 500, 320, 300, 100};
 static const int  VALUEINFINITE = piecevalue[0];
 
 //chess board constants
@@ -157,6 +158,12 @@ const bitboard filef = 0x2020202020202020ULL;
 const bitboard fileg = 0x4040404040404040ULL;
 const bitboard fileh = 0x8080808080808080ULL;
 const bitboard file[] = {filea,fileb,filec,filed,filee,filef,fileg,fileh};
+
+// castling moves
+const bitboard wkoo[] = {e1|g1,e8|g8};
+const bitboard wroo[] = {h1|f1,h8|f8};
+const bitboard wkooo[] = {e1|c1,e8|c8};
+const bitboard wrooo[] = {a1|d1,a8|d8};
 
 //initial position of all white and black pieces
 const bitboard start_all[2] = { rank1|rank2, rank7|rank8 };

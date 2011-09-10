@@ -45,8 +45,13 @@ public:
 	byte flags; //tells us if the move is double or en passant
 	byte captured; //which piece was captured
 
+	int score;
+
 	cmove *next;
 
+	cmove() {
+		cmove(0, 0, 0, 0, 0, 0);
+	}
 	cmove(cmove *m) {
 		cmove(m->from, m->to, m->mov2, m->piece, m->promotedto, m->flags,
 				m->captured);
@@ -113,8 +118,8 @@ public:
 	}
 
 	static cmove *newcmove(cmove *m) {
-		return newcmove(m->from, m->to, m->mov2, m->piece, m->promotedto, m->flags,
-				m->captured);
+		return newcmove(m->from, m->to, m->mov2, m->piece, m->promotedto,
+				m->flags, m->captured);
 	}
 
 	static void deletecmove(cmove *m) {
@@ -125,7 +130,7 @@ public:
 	}
 	static void gc() {
 		cmove *m;
-		while (top){
+		while (top) {
 			m = top;
 			top = top->next;
 			delete m;
@@ -156,8 +161,10 @@ public:
 
 	virtual ~MoveNode() {
 		//cout<<id<<",";
-		if (child) delete child;
-		if (next) delete next;
+		if (child)
+			delete child;
+		if (next)
+			delete next;
 
 		cmove::deletecmove(move);
 	}
@@ -174,6 +181,7 @@ public:
 		if (!m)
 			return;
 		MoveNode *n = new MoveNode(m);
+		n->score = m->score;
 		n->next = child;
 		child = n;
 	}
@@ -197,7 +205,7 @@ public:
 	}
 
 	moveshist(cmove *m, bitboard b) {
-		move = m;//new cmove(m);
+		move = m; //new cmove(m);
 		allpos = b;
 		id = cnt++;
 		//cout<<"N:"<<id<<",";
@@ -244,16 +252,30 @@ public:
 	}
 };
 
+class PVLine2 {
+public:
+	int num; // Number of moves in the line.
+	cmove argmove[10]; // The line.
+
+	void print() {
+		for (int i = 0; i < num; i++) {
+			cout << argmove[i].getMoveTxt() << " ";
+		}
+	}
+};
+
 class Engine {
 private:
 	cdebug debug;
 	int prosnodes;
 	simplemove *bktop;
 	simplemove *bkcurrent;
+	int trilen[8];
+	cmove triarr[8][8];
 
 protected:
 	// max depth for normal search
-	static const int MAX_AI_SEARCH_DEPTH = 5;
+	static const int MAX_AI_SEARCH_DEPTH = 6;
 	// board to store position of all black n white pieces
 	bitboard all[2];
 	// board to store position of each type of piece
@@ -308,7 +330,10 @@ protected:
 	void gen_rook_atk(side moveof, bitboard& atkbrd);
 	void gen_bishop_atk(side moveof, bitboard& atkbrd);
 
-	int next_ply_best_score(int depth, int alpha, int beta, cmove *bm);
+	int next_ply_best_score(int depth, int alpha, int beta, cmove *bm,
+			PVLine2 *pline);
+	int qs(int depth, int alpha, int beta);
+
 	MoveNode *insert_sort(MoveNode *par, MoveNode *c);
 	int static_position_score();
 
@@ -318,6 +343,8 @@ protected:
 public:
 	int gameended;
 	static Engine *curengine;
+	byte cap; //captured piece
+	byte mp; //moved piece
 
 	Engine();
 	virtual ~Engine();
