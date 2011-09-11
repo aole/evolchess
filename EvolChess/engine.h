@@ -87,14 +87,14 @@ public:
 		next = NULL;
 	}
 
-	void copy(cmove *m) {
-		from = m->from;
-		to = m->to;
-		mov2 = m->mov2;
-		piece = m->piece;
-		promotedto = m->promotedto;
-		flags = m->flags;
-		captured = m->captured;
+	void copy(cmove &m) {
+		from = m.from;
+		to = m.to;
+		mov2 = m.mov2;
+		piece = m.piece;
+		promotedto = m.promotedto;
+		flags = m.flags;
+		captured = m.captured;
 		next = NULL;
 	}
 
@@ -257,6 +257,9 @@ public:
 	int num; // Number of moves in the line.
 	cmove argmove[10]; // The line.
 
+	PVLine2() {
+		num = 0;
+	}
 	void print() {
 		for (int i = 0; i < num; i++) {
 			cout << argmove[i].getMoveTxt() << " ";
@@ -270,8 +273,12 @@ private:
 	int prosnodes;
 	simplemove *bktop;
 	simplemove *bkcurrent;
-	int trilen[8];
-	cmove triarr[8][8];
+#ifdef DEBUG
+	cmove curline[99];
+	int stopsearch;
+#endif
+	//int trilen[8];
+	//cmove triarr[8][8];
 
 protected:
 	// max depth for normal search
@@ -301,7 +308,7 @@ protected:
 	//history of moves done
 	dmovestack moveshistory;
 	//current best move
-	cmove *bestmove;
+	//cmove *bestmove;
 
 	//the stack
 	//cmovestack stack;
@@ -330,7 +337,7 @@ protected:
 	void gen_rook_atk(side moveof, bitboard& atkbrd);
 	void gen_bishop_atk(side moveof, bitboard& atkbrd);
 
-	int next_ply_best_score(int depth, int alpha, int beta, cmove *bm,
+	int next_ply_best_score(int ply, int depth, int alpha, int beta,
 			PVLine2 *pline);
 	int qs(int depth, int alpha, int beta);
 
@@ -364,7 +371,7 @@ public:
 	void list_moves();
 	bitboard getBitMove(string m);
 
-	cmove *doaimove();
+	void aimove(cmove &move);
 
 	int sidetomove() {
 		return moveof;

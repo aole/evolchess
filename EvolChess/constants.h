@@ -20,7 +20,7 @@
 
 #define MAJOR "0"
 #define MINOR "6"
-#define BUILD "6"
+#define BUILD "8 dev"
 #define VERSION MAJOR "." MINOR "." BUILD
 
 #include <stdint.h>
@@ -63,8 +63,8 @@ enum piece { none = -1, king, queen, rook, bishop, knight, pawn };
 
 static const char notationw[6][2] = { "K", "Q", "R", "B", "N", "P" };
 static const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
-static const int  piecevalue[6] = {100000, 900, 500, 320, 300, 100};
-static const int  VALUEINFINITE = piecevalue[0];
+static const int  piecevalue[6] = {100000, 900, 500, 305, 300, 100};
+static const int  VALUEINFINITE = __INT32_MAX__;
 
 //chess board constants
 const bitboard a8 = 0x100000000000000ULL;

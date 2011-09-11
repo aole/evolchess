@@ -16,9 +16,7 @@ public:
 	 // TODO: change to dynamic array/stack
 	static const int MAX_MOVES = 300;
 
-#ifdef DEBUG
 	int isready;
-#endif
 
 	// side to move
 	side moveof;
@@ -51,12 +49,13 @@ public:
 
 public:
 	board();
-	~board();
+	~board() {};
 
 	void newgame();
 	void domove(const bitmove &m);
 	void undolastmove();
-	int isCapture();
+
+	friend ostream &operator<<(ostream &s, board b);
 };
 
 #endif /* BOARD_H_ */
