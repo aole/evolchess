@@ -30,7 +30,7 @@ int main() {
      int xboard = 0, xforce = 1;
      byte engineplay = 0;
      Engine engine;
-     cmove *move;
+     cmove move;
 
      cin.rdbuf()->pubsetbuf(NULL,0);
      srand ( time(NULL) );
@@ -53,30 +53,24 @@ int main() {
     	 if (!engine.gameended && !xforce) {
 			 if (((engine.sidetomove() == white) && (engineplay & PLAYWHITE)) ||
 				((engine.sidetomove() == black) && (engineplay & PLAYBLACK))) {
-				 move = engine.doaimove();
-				 if (engine.isDraw()) {
+				 engine.aimove(move);
+				 /*if (engine.isDraw()) {
 					 cout << "1/2-1/2";
 					 engine.gameended = 1;
-				 }
-				 if (!move->from) {
+				 }*/
+				 if (!move.from) {
 					 if (engine.sidetomove() == black)
-						 cout << "0-1 {Black mates}\n";
+						 cout << "1-0 {White mates EC}\n";
 					 else
-						 cout << "1-0 {White mates}\n";
+						 cout << "0-1 {Black mates EC}\n";
 					 engine.gameended = 1;
 				 }
-				 else
-					 cout << "move " << move->getMoveTxt() << "\n";
-				 if (engine.isMateMove()){
-					 if (engine.sidetomove() == black)
-						 cout << "1-0 {White mates}\n";
-					 else
-						 cout << "0-1 {Black mates}\n";
-					 engine.gameended = 1;
+				 else {
+					 engine.domove(&move);
+					 cout << "move " << move.getMoveTxt() << "\n";
 				 }
-				 //if (!xboard)
-					//engine.show_board();
-				 cmove::deletecmove(move);
+				 if (!xboard)
+					engine.show_board();
 			 }
     	 }
 

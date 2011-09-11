@@ -10,24 +10,35 @@
 
 #include "constants.h"
 
+#include<iostream>
+#include <cstring>
+
+using namespace std;
+
 class bitmove {
 public:
-	bitboard move;
+	bitboard from, to;
 	piece promto;
 
 public:
 	bitmove() {
-		move = 0;
+		from = to = 0;
 		promto = none;
 	}
-	bitmove(bitboard m, piece pt = none) {
-		move = m;
+	bitmove(bitboard f, bitboard t, piece pt = none) {
+		from = f;
+		to = t;
 		promto = pt;
 	}
 	void copy(const bitmove &m) {
-		move = m.move;
+		from = m.from;
+		to = m.to;
 		promto = m.promto;
 	}
+	int set(const char *m);
+
+	friend ostream &operator<<(ostream &s, bitmove m);
 };
+
 
 #endif /* BITMOVE_H_ */

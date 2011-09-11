@@ -181,9 +181,6 @@ void Engine::newGame() {
 
 	kingmoved[0] = kingmoved[1] = 0;
 	rookmoved[0][0] = rookmoved[0][1] = rookmoved[1][0] = rookmoved[1][1] = 0;
-
-	//
-	bestmove = new cmove(0, 0, 0);
 }
 
 //show the board on the console
@@ -269,9 +266,8 @@ void Engine::undomove(cmove *move, int istemp) {
 			all[movenotof] ^= t << 8; //the pawn to be captured is actually, one rank back
 			pieces[movenotof][pawn] ^= t << 8;
 		}
-	} else
-	//respawn captured piece
-	if (move->captured) {
+	} else if (move->captured) {
+		//respawn captured piece
 		all[movenotof] ^= t;
 		pieces[movenotof][move->captured] ^= t;
 	}
@@ -303,39 +299,28 @@ void Engine::undomove(cmove *move, int istemp) {
 }
 
 // ai thread function
-void Engine::findbestmove() {
-	PVLine2 line;
-	//time_t t1, t2;
-	int best_score;
-	cmove bm(0, 0, 0);
+void Engine::findbestmove() {/*
+ PVLine2 line;
+ //time_t t1, t2;
+ cmove bm(0, 0, 0);
 
-	//start timer
-	//t1 = clock();
+ //start timer
+ //t1 = clock();
 
-	//for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
-	int depth = MAX_AI_SEARCH_DEPTH;
-	curengine->prosnodes = 0;
-	//Alpha-Beta Pruning
-	int alpha = -VALUEINFINITE, beta = VALUEINFINITE;
+ //for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
+ int depth = MAX_AI_SEARCH_DEPTH;
+ curengine->prosnodes = 0;
 
-	best_score = curengine->next_ply_best_score(depth, alpha, beta, &bm, &line);
+ curengine->next_ply_best_score(depth, -VALUEINFINITE, VALUEINFINITE, &bm, &line);
 
-	/*if (!bm.from) {
-	 cout << "best move not found!\n";
-	 return;
-	 } else*/
-	curengine->bestmove->copy(&bm);
-	//t2 = clock() - t1;
-	//if (t2 > 5000)
-	//break;
-	//}
-
-	//curengine->domove(curengine->bestmove);
-
-	//cout << "elapsed:" << t2 << "; prossesed:" << MoveNode::cnt << endl;
+ curengine->bestmove->copy(&bm);
+ //t2 = clock() - t1;
+ //if (t2 > 5000)
+ //break;
+ //}*/
 }
 // ai with Negamax Search
-cmove *Engine::doaimove() {
+void Engine::aimove(cmove &move) {
 	curengine = this;
 	cmove *bkmove;
 	simplemove *_sm;
@@ -354,19 +339,35 @@ cmove *Engine::doaimove() {
 			}
 			bkcurrent = _sm;
 			bkmove = create_move(_sm->move);
-			domove(bkmove);
-			return bkmove;
+			move.copy(*bkmove);
+			return;
 		}
 	}
 	//HANDLE th = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) findbestmove,
 	//		NULL, 0, NULL);
 	//WaitForSingleObject(th, INFINITE);
 	//CloseHandle(th);
-	bestmove->set(0, 0, 0, 0, 0, 0, 0);
-	findbestmove();
-	if (bestmove->from)
-		domove(bestmove);
-	return bestmove;
+
+	PVLine2 line;
+	//time_t t1, t2;
+	//start timer
+	//t1 = clock();
+
+	//for (int depth = 2; depth <= MAX_AI_SEARCH_DEPTH; depth++) {
+	int depth = MAX_AI_SEARCH_DEPTH;
+	int ply = 0;
+	curengine->prosnodes = 0;
+#ifdef DEBUG
+	stopsearch = 0;
+#endif
+	curengine->next_ply_best_score(ply, depth, -VALUEINFINITE, VALUEINFINITE,
+			&line);
+
+	//t2 = clock() - t1;
+	//if (t2 > 5000)
+	//break;
+	//}
+	move.copy(line.argmove[0]);
 }
 
 MoveNode *Engine::insert_sort(MoveNode *par, MoveNode *c) {
@@ -423,7 +424,7 @@ int Engine::qs(int depth, int alpha, int beta) {
 		return 0;
 
 	//if (!depth)
-		//return static_position_score();
+	//return static_position_score();
 
 	MoveNode *par = new MoveNode;
 	generate_moves(par);
@@ -445,7 +446,7 @@ int Engine::qs(int depth, int alpha, int beta) {
 	//line->change(par->child->move, depth);
 	for (MoveNode *cur = par->child; cur; cur = cur->next) {
 		//domove(cur->move);
-		cur_score = cur->move->score;//-next_ply_best_score(depth - 1, -beta, -alpha, NULL);
+		cur_score = cur->move->score; //-next_ply_best_score(depth - 1, -beta, -alpha, NULL);
 		//cur->score = cur_score;
 		//undomove(cur->move);
 
@@ -461,32 +462,36 @@ int Engine::qs(int depth, int alpha, int beta) {
 	return alpha;
 }
 //
-int Engine::next_ply_best_score(int depth, int alpha, int beta, cmove *bm, PVLine2 *pline) {
+int Engine::next_ply_best_score(int ply, int depth, int alpha, int beta,
+		PVLine2 *pline) {
 	PVLine2 line;
 	int cur_score;
 
 	/*if (checkfordraw()){
-		pline->num = 0;
-		return 25; // contempt factor
-	}*/
+	 pline->num = 0;
+	 return 25; // contempt factor
+	 }*/
 
 	if (!depth) {
 		pline->num = 0;
 		/*if (mp-cap<0)
-			return -qs(0, -beta, -alpha);
-		else*/
-			return static_position_score();
+		 return -qs(0, -beta, -alpha);
+		 else*/
+		return static_position_score();
 	}
 
 	MoveNode *par = new MoveNode;
 	generate_moves(par);
-//cout<<"gen\n";
 
 	if (!par->child) {
-		ismate = 1;
-		return -VALUEINFINITE;
-	} else
-		ismate = 0;
+#ifdef DEBUG
+			cout<<"#";
+			for (int i=0;i<ply;i++)
+				cout<<" "<<curline[i].getMoveTxt();
+			cout<<":"<<(piecevalue[king]*depth)<<endl;
+#endif
+		return -piecevalue[king]*depth;
+	}
 
 	MoveNode *par2 = new MoveNode;
 //get static scores for this level and sort them
@@ -498,10 +503,14 @@ int Engine::next_ply_best_score(int depth, int alpha, int beta, cmove *bm, PVLin
 	delete par2;
 
 	for (MoveNode *cur = par->child; cur; cur = cur->next) {
+#ifdef DEBUG
+	curline[ply].copy(*cur->move);
+#endif
 		domove(cur->move);
 		cap = cur->move->captured;
 		mp = cur->move->piece;
-		cur_score = -next_ply_best_score(depth - 1, -beta, -alpha, NULL, &line);
+		cur_score = -next_ply_best_score(ply + 1, depth - 1, -beta, -alpha,
+				&line);
 		cur->score = cur_score;
 		undomove(cur->move);
 
@@ -511,14 +520,10 @@ int Engine::next_ply_best_score(int depth, int alpha, int beta, cmove *bm, PVLin
 		}
 		if (cur_score > alpha) {
 			alpha = cur_score;
-			//if (pline->argmove[0])
-				//delete pline->argmove[0];
-			pline->argmove[0].copy(cur->move);
-			memcpy(pline->argmove+1, line.argmove, line.num*sizeof(cmove));
-			pline->num = line.num+1;
-			if (bm) {
-				bm->copy(cur->move);
-
+			pline->argmove[0].copy(*cur->move);
+			memcpy(pline->argmove + 1, line.argmove, line.num * sizeof(cmove));
+			pline->num = line.num + 1;
+			if (!ply) {
 				cout << depth << " " << cur_score << " 0 0 ";
 				pline->print();
 				cout << endl;
@@ -577,10 +582,10 @@ int Engine::static_position_score() {
 				bv[i] += 1;
 
 			// blocking central pawns
-			if ((pieces[i][pawn]&d2) && ((all[white]|all[black])&d3))
-				bv[i] -= 1;
-			if ((pieces[i][pawn]&e2) && ((all[white]|all[black])&e3))
-				bv[i] -= 1;
+			if ((pieces[i][pawn] & d2) && ((all[white] | all[black]) & d3))
+				bv[i] -= 3;
+			if ((pieces[i][pawn] & e2) && ((all[white] | all[black]) & e3))
+				bv[i] -= 3;
 		} else {
 			if ((pieces[i][king] & 0x4000000000000000ULL)
 					&& !(all[i] & 0x8000000000000000ULL)
@@ -600,17 +605,17 @@ int Engine::static_position_score() {
 				bv[i] += 1;
 
 			// blocking central pawns
-			if ((pieces[i][pawn]&d7) && ((all[white]|all[black])&d6))
-				bv[i] -= 1;
-			if ((pieces[i][pawn]&e7) && ((all[white]|all[black])&e6))
-				bv[i] -= 1;
+			if ((pieces[i][pawn] & d7) && ((all[white] | all[black]) & d6))
+				bv[i] -= 3;
+			if ((pieces[i][pawn] & e7) && ((all[white] | all[black]) & e6))
+				bv[i] -= 3;
 		}
 		//knights in the middle
 		if (pieces[i][knight] & (d4 | d5 | e4 | e5))
 			bv[i] += 4;
 		if (pieces[i][knight]
 				& (c3 | d3 | e3 | f3 | c6 | d6 | e6 | f6 | c4 | f4))
-			bv[i] += 2;
+			bv[i] += 3;
 		//bishops on principle diagonals
 		if (pieces[i][bishop] & (0x8040201008040201ULL | 0x0804020180402010ULL))
 			bv[i] += 3;
@@ -1105,32 +1110,30 @@ void Engine::gen_king_moves(MoveNode *par) {
 	if (!kingmoved[moveof]) {
 		// castle towards filea
 		if (!rookmoved[moveof][0]) {
-			if (moveof == white && !(_all & 0xE)
-					&& (pieces[white][rook] & 0x1)) {
+			if (moveof == white && !(_all & (b1 | c1 | d1))
+					&& (pieces[white][rook] & a1)) {
 				par->addChild(
-						create_move(lsb, 0x4, king, 0, FLAGCASTLEA | KINGMOVED,
-								0x1 | 0x8));
-			} else if (moveof == black && !(_all & 0xE00000000000000ULL)
-					&& (pieces[black][rook] & 0x100000000000000ULL)) {
+						create_move(lsb, c1, king, 0, FLAGCASTLEA | KINGMOVED,
+								a1 | d1));
+			} else if (moveof == black && !(_all & (b8 | c8 | d8))
+					&& (pieces[black][rook] & a8)) {
 				par->addChild(
-						create_move(lsb, 0x400000000000000ULL, king, 0,
-								FLAGCASTLEA | KINGMOVED,
-								0x100000000000000ULL | 0x800000000000000ULL));
+						create_move(lsb, c8, king, 0, FLAGCASTLEA | KINGMOVED,
+								a8 | d8));
 			}
 		}
 		// castle towards fileh
 		if (!rookmoved[moveof][1]) {
-			if (moveof == white && !(_all & 0x60)
-					&& (pieces[white][rook] & 0x80)) {
+			if (moveof == white && !(_all & (f1 | g1))
+					&& (pieces[white][rook] & h1)) {
 				par->addChild(
-						create_move(lsb, 0x40, king, 0, FLAGCASTLEH | KINGMOVED,
-								0x80 | 0x20));
-			} else if (moveof == black && !(_all & 0x6000000000000000ULL)
-					&& (pieces[black][rook] & 0x8000000000000000ULL)) {
+						create_move(lsb, g1, king, 0, FLAGCASTLEH | KINGMOVED,
+								h1 | f1));
+			} else if (moveof == black && !(_all & (f8 | g8))
+					&& (pieces[black][rook] & h8)) {
 				par->addChild(
-						create_move(lsb, 0x4000000000000000ULL, king, 0,
-								FLAGCASTLEH | KINGMOVED,
-								0x8000000000000000ULL | 0x2000000000000000ULL));
+						create_move(lsb, g8, king, 0, FLAGCASTLEH | KINGMOVED,
+								h8 | f8));
 			}
 		}
 	}
