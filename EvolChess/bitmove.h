@@ -37,6 +37,9 @@ public:
 	}
 	int set(const char *m);
 
+	bool operator == (const bitmove &m) const {
+		return (from==m.from && to==m.to && promto==m.promto);
+	}
 	friend ostream &operator<<(ostream &s, bitmove m);
 };
 

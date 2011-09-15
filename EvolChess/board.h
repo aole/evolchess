@@ -44,6 +44,8 @@ public:
 	// 0 when game starts
 	int movenumber;
 	bitmove history[MAX_MOVES];
+	// which piece moved
+	piece moved[MAX_MOVES];
 	// which piece got captured at that move
 	piece captured[MAX_MOVES];
 

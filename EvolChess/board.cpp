@@ -64,6 +64,7 @@ void board::domove(const bitmove &m) {
 		p = knight;
 	else if (ppieces[moveof][pawn] & from)
 		p = pawn;
+	moved[movenumber] = p;
 
 	if (ppieces[movenotof][queen] & to)
 		c = queen;
@@ -75,10 +76,7 @@ void board::domove(const bitmove &m) {
 		c = knight;
 	else if (ppieces[movenotof][pawn] & to)
 		c = pawn;
-
-#ifdef DEBUG
-	cout << p << " " << c;
-#endif
+	captured[movenumber] = c;
 
 	// if castling move, move the rook
 	if (p == king) {
@@ -117,7 +115,6 @@ void board::domove(const bitmove &m) {
 
 // en passent and opponents piece removal
 	if (to & enpasqr[movenumber]) {
-		cout<<"enpa move\n";
 		pall[movenotof] ^= enpapwn[movenumber];
 		ppieces[movenotof][pawn] ^= enpapwn[movenumber];
 	} else if (c != none) {
@@ -126,7 +123,6 @@ void board::domove(const bitmove &m) {
 	}
 
 	history[movenumber].copy(m);
-	captured[movenumber] = c;
 
 	movenumber++;
 
@@ -180,7 +176,10 @@ void board::undolastmove() {
 	} else
 		ppieces[moveof][p] ^= mov;
 
-	// if castling move, move the rook
+	// adjust all pieces bitboard
+	pall[moveof] ^= mov;
+
+	// if castling move, move the rook also
 	if (p == king) {
 		if (mov == wkoo[moveof]) {
 			pall[moveof] ^= wroo[moveof];

@@ -21,9 +21,11 @@ char *getcurtime() {
 	 return ctime(&curtime);
 }
 
+#ifdef DEGUB
 void log(ofstream &f, char const *msg) {
 	f<<"# "<<getcurtime()<<msg<<endl;
 }
+#endif
 
 //main function; entry point
 int main() {
@@ -35,13 +37,15 @@ int main() {
      cin.rdbuf()->pubsetbuf(NULL,0);
      srand ( time(NULL) );
 
- 	 cout<<"\nWelcome to Evolution Chess ("<<VERSION<<")\n";
-	 cout<<"Copyright 2011 Bhupendra Aole\n\n";
+ 	 cout<<"\nWelcome to "<<ENGINEFULLNAME;
+	 cout<<"\nCopyright 2011 Bhupendra Aole\n\n";
 
+#ifdef DEGUB
 	 // open conversation file
 	 ofstream confile;
 	 confile.open("conversation.log");
 	 log(confile, "# Program started");
+#endif
 
      //response buffer
      char res[500];
@@ -76,13 +80,14 @@ int main() {
 
     	 //get user/xboard input
          cin.getline(res, 500);
+#ifdef DEGUB
          log(confile, res);
-
+#endif
          if (!strcmp(res, "xboard")) {
             // started by WinBoard
             xboard = 1;
          } else if (!strncmp(res, "protover", 8)) {
-                cout << "feature myname=\"Evolution Chess\" time=0 reuse=0 analyze=0 done=1\n";
+                cout << "feature myname=\""<<ENGINEFULLNAME<<"\" reuse=0 analyze=0 done=1\n";
                 cout.flush();
          } else if (!strcmp(res, "quit")) {
                 //exit program
@@ -103,12 +108,12 @@ int main() {
          } else if (!strcmp(res, "random")) {
              // ignore random command
          } else if (!strncmp (res, "level", 5)) {
-             //Set time controls. need to parse.
+             engine.inittime(res);
          } else if (!strcmp (res, "hard")) {
              //Turn on pondering (thinking on the opponent's time,
         	 //also known as "permanent brain").
          } else if (!strncmp (res, "time", 4)) {
-             //Set a clock that always belongs to the engine.
+             engine.setowntime(res);
          } else if (!strncmp (res, "otim", 4)) {
              //Set a clock that always belongs to the opponent.
          } else if (!strcmp (res, "post")) {
@@ -169,9 +174,11 @@ int main() {
          }
      }
 
+#ifdef DEGUB
      // close conversation file
      log(confile, "# Program ended");
      confile.close();
+#endif
 
      cout << "Thank u for playing! Have a nice Day...\n";
      return 0;
