@@ -270,11 +270,15 @@ public:
 class Engine {
 private:
 	cdebug debug;
-	int prosnodes;
 	simplemove *bktop;
 	simplemove *bkcurrent;
+	time_t t1;
+	int tnodes;
+	int movescore;
+	int movesintime, mps;
+	int timeleft;
+
 #ifdef DEBUG
-	cmove curline[99];
 	int stopsearch;
 #endif
 	//int trilen[8];
@@ -293,7 +297,7 @@ protected:
 	//side not to move
 	side movenotof;
 	//move number
-	byte moveno;
+	int moveno;
 	//mate flag
 	int ismate;
 	//3fold draw flag
@@ -329,29 +333,33 @@ protected:
 	void gen_knight_moves(MoveNode *par);
 	void gen_rook_moves(byte piecefor, bitboard ar, MoveNode *par);
 	void gen_bishop_moves(byte piecefor, bitboard ar, MoveNode *par);
-
+/*
 	void gen_atk_moves(side moveof, bitboard& atkbrd);
 	void gen_king_atk(side movefor, bitboard& atkbrd);
 	void gen_pawn_atk(side moveof, bitboard& atkbrd);
 	void gen_knight_atk(side moveof, bitboard& atkbrd);
 	void gen_rook_atk(side moveof, bitboard& atkbrd);
 	void gen_bishop_atk(side moveof, bitboard& atkbrd);
+*/
 
-	int next_ply_best_score(int ply, int depth, int alpha, int beta,
+	void gen_atk_moves( bitboard& atkbrd);
+	void gen_king_atk(bitboard& atkbrd);
+	void gen_pawn_atk(bitboard& atkbrd);
+	void gen_knight_atk( bitboard& atkbrd);
+	void gen_rook_atk(bitboard& atkbrd);
+	void gen_bishop_atk(bitboard& atkbrd);
+
+	int alphabeta(int ply, int depth, int alpha, int beta,
 			PVLine2 *pline);
 	int qs(int depth, int alpha, int beta);
 
 	MoveNode *insert_sort(MoveNode *par, MoveNode *c);
-	int static_position_score();
+	int evaluate();
 
 	int checkfordraw();
 
-	static void findbestmove();
 public:
 	int gameended;
-	static Engine *curengine;
-	byte cap; //captured piece
-	byte mp; //moved piece
 
 	Engine();
 	virtual ~Engine();
@@ -377,12 +385,15 @@ public:
 		return moveof;
 	}
 	;
-	void domove(cmove *move, int istemp = 0);
-	void undomove(cmove *move, int istemp = 0);
+	void domove(cmove *move);
+	void undomove(cmove *move);
 	void undolastmove();
 	int input_move(char *m);
 
 	int get_bit_pos(bitboard b);
+
+	void inittime(char *t);
+	void setowntime(char *t);
 };
 
 #endif /* ENGINE_H_ */
