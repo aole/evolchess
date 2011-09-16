@@ -21,7 +21,7 @@
 #define ENGINENAME "Evolution Chess"
 #define MAJOR "0"
 #define MINOR "6"
-#define BUILD "12"
+#define BUILD "13"
 #define STAGE "dev"
 #define VERSION MAJOR "." MINOR "." BUILD "." STAGE
 #define ENGINEFULLNAME ENGINENAME " " VERSION
