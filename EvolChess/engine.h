@@ -255,7 +255,7 @@ public:
 class PVLine2 {
 public:
 	int num; // Number of moves in the line.
-	cmove argmove[10]; // The line.
+	cmove argmove[12]; // The line.
 
 	PVLine2() {
 		num = 0;

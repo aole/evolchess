@@ -548,17 +548,18 @@ int Engine::alphabeta(int ply, int depth, int alpha, int beta, PVLine2 *pline) {
 	delete par;
 	return alpha;
 }
-//
+
+// according to http://jim-ablett.co.de/LittleChessEvaluationCompendium_09-04-10.pdf
 int Engine::evaluate() {
 //calculate board value
-	int bv[] = { 0, 0 }, j;
+	int bv[] = { 0, 0 }, otherside;
 	bitboard lsb; //last significant bit
 
 	for (int i = 0; i < 2; i++) {
 		if (i == 0)
-			j = 1;
+			otherside = 1;
 		else
-			j = 1;
+			otherside = 0;
 
 		//piece value
 		bitboard ap = all[i];
@@ -572,94 +573,202 @@ int Engine::evaluate() {
 			}
 			ap ^= lsb;
 		}
-		//check for center pawns
-		if (pieces[i][pawn] & 0x1818000000ULL)
-			bv[i] += 2;
-		/*if (pieces[i][pawn] & 0x181818180000ULL)
-		 bv[i]++;*/
 
-		// check for castling
-		if (i == white) {
-			if ((pieces[i][king] & 0x40) && !(all[i] & 0x80)
-					&& (pieces[i][pawn] & 0xE000)) {
-				bv[i] += 10;
-			}
-			//pawn advancement
-			if (pieces[i][pawn] & rank7)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank6)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank5)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank4)
-				bv[i] += 2;
-			if (pieces[i][pawn] & rank3)
-				bv[i] += 1;
+		// focal center e4 d4 e5 d5
+		// pawns
+		if (pieces[i][pawn] & e4)
+			bv[i] += 40;
+		if (pieces[i][pawn] & d4)
+			bv[i] += 40;
+		if (pieces[i][pawn] & e5)
+			bv[i] += 40;
+		if (pieces[i][pawn] & d5)
+			bv[i] += 40;
+		// minor pieces
+		if (pieces[i][knight] & e4)
+			bv[i] += 20;
+		if (pieces[i][knight] & d4)
+			bv[i] += 20;
+		if (pieces[i][knight] & e5)
+			bv[i] += 20;
+		if (pieces[i][knight] & d5)
+			bv[i] += 20;
+		if (pieces[i][bishop] & e4)
+			bv[i] += 20;
+		if (pieces[i][bishop] & d4)
+			bv[i] += 20;
+		if (pieces[i][bishop] & e5)
+			bv[i] += 20;
+		if (pieces[i][bishop] & d5)
+			bv[i] += 20;
+		// queen
+		if (pieces[i][queen] & e4)
+			bv[i] += 30;
+		if (pieces[i][queen] & d4)
+			bv[i] += 30;
+		if (pieces[i][queen] & e5)
+			bv[i] += 30;
+		if (pieces[i][queen] & d5)
+			bv[i] += 30;
 
-			// blocking central pawns
-			if ((pieces[i][pawn] & d2) && ((all[white] | all[black]) & d3))
-				bv[i] -= 3;
-			if ((pieces[i][pawn] & e2) && ((all[white] | all[black]) & e3))
-				bv[i] -= 3;
-		} else {
-			if ((pieces[i][king] & 0x4000000000000000ULL)
-					&& !(all[i] & 0x8000000000000000ULL)
-					&& (pieces[i][pawn] & 0xE000000000000000ULL)) {
-				bv[i] += 10;
-			}
-			//pawn advancement
-			if (pieces[i][pawn] & rank2)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank3)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank4)
-				bv[i] += 3;
-			if (pieces[i][pawn] & rank5)
-				bv[i] += 2;
-			if (pieces[i][pawn] & rank6)
-				bv[i] += 1;
-
-			// blocking central pawns
-			if ((pieces[i][pawn] & d7) && ((all[white] | all[black]) & d6))
-				bv[i] -= 3;
-			if ((pieces[i][pawn] & e7) && ((all[white] | all[black]) & e6))
-				bv[i] -= 3;
+		// rook on central 4th n 5th rank
+		if (pieces[i][rook] & (c4 | d4 | e4 | f4 | c5 | d4 | e5 | f5))
+			bv[i] += 30;
+		// rook on semi-open/open file
+		if ((pieces[i][rook] & filea) && !(pieces[i][pawn] & filea)) {
+			if (pieces[otherside][pawn] & filea)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
 		}
-		//knights in the middle
-		if (pieces[i][knight] & (d4 | d5 | e4 | e5))
-			bv[i] += 4;
-		if (pieces[i][knight]
-				& (c3 | d3 | e3 | f3 | c6 | d6 | e6 | f6 | c4 | f4))
-			bv[i] += 3;
-		//bishops on principle diagonals
-		if (pieces[i][bishop] & (0x8040201008040201ULL | 0x0804020180402010ULL))
-			bv[i] += 3;
-		if (pieces[i][bishop] & (0xC0E070381C0E0703ULL | 0x03070E1C3870E0C0ULL))
-			bv[i] += 3;
-		//rook on open file
-		if ((pieces[i][rook] & filea) && !(pieces[i][pawn] & filea))
-			bv[i] += 4;
-		if ((pieces[i][rook] & fileb) && !(pieces[i][pawn] & fileb))
-			bv[i] += 4;
-		if ((pieces[i][rook] & filec) && !(pieces[i][pawn] & filec))
-			bv[i] += 4;
-		if ((pieces[i][rook] & filed) && !(pieces[i][pawn] & filed))
-			bv[i] += 4;
-		if ((pieces[i][rook] & filee) && !(pieces[i][pawn] & filee))
-			bv[i] += 4;
-		if ((pieces[i][rook] & filef) && !(pieces[i][pawn] & filef))
-			bv[i] += 4;
-		if ((pieces[i][rook] & fileg) && !(pieces[i][pawn] & fileg))
-			bv[i] += 4;
-		if ((pieces[i][rook] & fileh) && !(pieces[i][pawn] & fileh))
-			bv[i] += 4;
+		if ((pieces[i][rook] & fileb) && !(pieces[i][pawn] & fileb)) {
+			if (pieces[otherside][pawn] & fileb)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & filec) && !(pieces[i][pawn] & filec)) {
+			if (pieces[otherside][pawn] & filec)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & filed) && !(pieces[i][pawn] & filed)) {
+			if (pieces[otherside][pawn] & filed)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & filee) && !(pieces[i][pawn] & filee)) {
+			if (pieces[otherside][pawn] & filee)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & filef) && !(pieces[i][pawn] & filef)) {
+			if (pieces[otherside][pawn] & filef)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & fileg) && !(pieces[i][pawn] & fileg)) {
+			if (pieces[otherside][pawn] & fileg)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
+		if ((pieces[i][rook] & fileh) && !(pieces[i][pawn] & fileh)) {
+			if (pieces[otherside][pawn] & fileh)
+				bv[i] += 20;
+			else
+				bv[i] += 30;
+		}
 
-		// rook at 7th rank
 		if (i == white) {
-			if (pieces[i][rook] & rank7)
-				bv[i] += 2;
-		} else if (pieces[i][rook] & rank2)
-			bv[i] += 2;
+			// controlling focal center
+			// pawns
+			if (pieces[i][pawn] & c3)
+				bv[i] += 10;
+			if (pieces[i][pawn] & d3)
+				bv[i] += 10;
+			if (pieces[i][pawn] & e3)
+				bv[i] += 10;
+			if (pieces[i][pawn] & f3)
+				bv[i] += 10;
+
+			// blocked pawns
+			if ((all[i] & d3) && (pieces[i][pawn] & d2))
+				bv[i] -= 20;
+			if ((all[i] & e3) && (pieces[i][pawn] & e2))
+				bv[i] -= 20;
+
+			// pawn on fifth rank
+			if (pieces[i][pawn] & rank5)
+				bv[i] += 10;
+			// pawn on sixth rank
+			if (pieces[i][pawn] & rank6)
+				bv[i] += 30;
+
+			// minor piece on fifth rank
+			if (pieces[i][knight] & rank5)
+				bv[i] += 25;
+			if (pieces[i][bishop] & rank5)
+				bv[i] += 25;
+			// minor on sixth rank
+			if (pieces[i][knight] & rank6)
+				bv[i] += 50;
+			if (pieces[i][bishop] & rank6)
+				bv[i] += 50;
+
+			// king safety
+			if (pieces[i][king] & (a1 | b1 | g1 | h1))
+				bv[i] += 100;
+			if (pieces[i][king] & (f1 | c1))
+				bv[i] -= 50;
+			if (pieces[i][king] & (e1 | d1))
+				bv[i] -= 100;
+			// bishop shelter
+			if ((pieces[i][king] & g1) && (pieces[i][bishop] & g2))
+				bv[i] += 30;
+			if ((pieces[i][king] & b1) && (pieces[i][bishop] & b2))
+				bv[i] += 30;
+
+			// Unreasonable retreats & development
+			if (pieces[i][bishop]&(b1|c1|f1|g1))
+				bv[i]-=40;
+		} else {
+			// controlling focal center
+			// pawns
+			if (pieces[i][pawn] & c6)
+				bv[i] += 10;
+			if (pieces[i][pawn] & d6)
+				bv[i] += 10;
+			if (pieces[i][pawn] & e6)
+				bv[i] += 10;
+			if (pieces[i][pawn] & f6)
+				bv[i] += 10;
+
+			// blocked pawns
+			if ((all[i] & d6) && (pieces[i][pawn] & d7))
+				bv[i] -= 20;
+			if ((all[i] & e6) && (pieces[i][pawn] & e7))
+				bv[i] -= 20;
+
+			// pawn on fourth rank
+			if (pieces[i][pawn] & rank4)
+				bv[i] += 10;
+			// pawn on third rank
+			if (pieces[i][pawn] & rank3)
+				bv[i] += 30;
+
+			// minor piece on fifth rank
+			if (pieces[i][knight] & rank4)
+				bv[i] += 25;
+			if (pieces[i][bishop] & rank4)
+				bv[i] += 25;
+			// minor on sixth rank
+			if (pieces[i][knight] & rank3)
+				bv[i] += 50;
+			if (pieces[i][bishop] & rank3)
+				bv[i] += 50;
+
+			// king safety
+			if (pieces[i][king] & (a8 | b8 | g8 | h8))
+				bv[i] += 100;
+			if (pieces[i][king] & (f8 | c8))
+				bv[i] -= 50;
+			if (pieces[i][king] & (e8 | d8))
+				bv[i] -= 100;
+			// bishop shelter
+			if ((pieces[i][king] & g8) && (pieces[i][bishop] & g7))
+				bv[i] += 30;
+			if ((pieces[i][king] & b8) && (pieces[i][bishop] & b7))
+				bv[i] += 30;
+
+			// Unreasonable retreats & development
+			if (pieces[i][bishop]&(b8|c8|f8|g8))
+				bv[i]-=40;
+		}
 	}
 	return bv[moveof] - bv[movenotof];
 }
