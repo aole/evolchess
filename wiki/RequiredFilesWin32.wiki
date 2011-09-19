@@ -1,0 +1,4 @@
+#summary Link to required files to run under win32
+
+ * [http://wtfu.googlecode.com/files/libstdc%2B%2B-6.dll libstdc++-6.dll]
+ * [http://wtfu.googlecode.com/files/libgcc_s_dw2-1.dll libgcc_s_dw2-1.dll]
