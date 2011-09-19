@@ -1,1 +1,2 @@
-Winboard Protocol					http://home.hccnet.nl/h.g.muller/engine-intf.html
+Winboard Protocol - http://home.hccnet.nl/h.g.muller/engine-intf.html
+Board Evaluation - http://jim-ablett.co.de/LittleChessEvaluationCompendium_09-04-10.pdf

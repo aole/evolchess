@@ -10,6 +10,8 @@
 #ifndef ENGINE_H_
 #define ENGINE_H_
 
+#include <vector>
+
 #include "constants.h"
 #include "debug.h"
 
@@ -45,7 +47,7 @@ public:
 	byte flags; //tells us if the move is double or en passant
 	byte captured; //which piece was captured
 
-	int score;
+	int weight;
 
 	cmove *next;
 
@@ -68,6 +70,7 @@ public:
 		flags = flg;
 		captured = c;
 		next = NULL;
+		weight = 0;
 		//cout<<"m:"<<getMoveTxt()<<endl;
 	}
 	~cmove() {
@@ -85,6 +88,7 @@ public:
 		flags = flg;
 		captured = c;
 		next = NULL;
+		weight = 0;
 	}
 
 	void copy(cmove &m) {
@@ -147,7 +151,8 @@ protected:
 		move = NULL;
 		child = NULL;
 		next = NULL;
-		score = 0;
+		weight = 0;
+		//childcount=0;
 	}
 public:
 	// the move
@@ -157,10 +162,10 @@ public:
 	// siblings
 	MoveNode *next;
 	// static position score after this move
-	int score;
+	int weight;
+	//int childcount;
 
 	virtual ~MoveNode() {
-		//cout<<id<<",";
 		if (child)
 			delete child;
 		if (next)
@@ -181,9 +186,9 @@ public:
 		if (!m)
 			return;
 		MoveNode *n = new MoveNode(m);
-		n->score = m->score;
 		n->next = child;
 		child = n;
+		//childcount++;
 	}
 };
 
@@ -274,13 +279,11 @@ private:
 	simplemove *bkcurrent;
 	time_t t1;
 	int tnodes;
-	int movescore;
+	//int movescore;
 	int movesintime, mps;
 	int timeleft;
-
-#ifdef DEBUG
 	int stopsearch;
-#endif
+
 	//int trilen[8];
 	//cmove triarr[8][8];
 
@@ -303,6 +306,8 @@ protected:
 	//3fold draw flag
 	int isthreefoldw;
 	int isthreefoldb;
+	// end game distinction
+	int isendgame;
 
 	//this is the square where the adversary will capture
 	//if move is e2e4 then epsq will be e3
@@ -327,12 +332,24 @@ protected:
 	cmove *create_move(bitboard mov);
 	cmove *create_move(bitboard f, bitboard t, byte moved, byte promto,
 			byte flags, bitboard mov2);
+	// create move without checking legality
+	cmove *create_move_nc(bitboard f, bitboard t, byte moved, byte promto,
+			byte flags, bitboard mov2, int weight);
+	// only legal moves
 	void generate_moves(MoveNode *par);
 	void gen_pawn_moves(MoveNode *par);
 	void gen_king_moves(MoveNode *par);
 	void gen_knight_moves(MoveNode *par);
 	void gen_rook_moves(byte piecefor, bitboard ar, MoveNode *par);
 	void gen_bishop_moves(byte piecefor, bitboard ar, MoveNode *par);
+
+	// pseudo-legal moves generation
+	void generate_pseudo_moves(vector<cmove*>&v);
+	void gen_pawn_pseudo_moves(vector<cmove*>&v);
+	void gen_king_pseudo_moves(vector<cmove*>&v);
+	void gen_knight_pseudo_moves(vector<cmove*>&v);
+	void gen_rook_pseudo_moves(byte piecefor, bitboard ar, vector<cmove*>&v);
+	void gen_bishop_pseudo_moves(byte piecefor, bitboard ar, vector<cmove*>&v);
 /*
 	void gen_atk_moves(side moveof, bitboard& atkbrd);
 	void gen_king_atk(side movefor, bitboard& atkbrd);

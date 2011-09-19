@@ -1,0 +1,21 @@
+Change History
+==============
+
+0.6.14
+------
+evaluation:
+* end game distinction
+* king safety
+* piece placement
+* blocked rook
+* king running from rank1 (opening issue)
+* piece on wider center
+* B > N > 3p
+
+search:
+* search prev. iterations move first
+* then captures
+
+move generation:
+* use stl::vector
+* weighted moves
