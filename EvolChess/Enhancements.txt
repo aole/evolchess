@@ -1,0 +1,43 @@
+Enhancements to worked on
+=========================
+
+Evaluation
+----------
+blocked rook ... (kf1|kg1) & @rh1 #0.6.14
+pawn shelter ... kg1&!pg2
+king running from rank1 (opening issue) #0.6.14
+king involvement in endgame
+determination of endgame #0.6.14
+passed pawn
+rook battery
+doubled pawn
+Pieces keeping control of focal center
++10 for piece on wider center #0.6.14
+queen out early (if before devls. 2 minor pieces)
+exchange pieces when ahead
+B > N > 3p {http://chessprogramming.wikispaces.com/Simplified+evaluation+function} #0.6.14
+implement piece/square table {http://chessprogramming.wikispaces.com}
+
+search
+-----------
+store move number of first move for bishop and knight also
+xx - aspiration window #0.6.14
+search prev. iterations move first #0.6.14
+
+move generation
+---------------
+if only one move available, do not search it on the first ply. #0.6.14
+generate only pseudo-legal moves & check for legality in search. #0.6.14
+use stl::vector #0.6.14
+provide weights to each move for ordering  #0.6.14
+
+Code Speed up
+-------------
+pre-compute distance between two squares.
+pre-compute control of center for knight, bishop and rook
+
+create two flags for each move:
+CAPTURE_NORMAL
+CAPTURE_KING
+
+implement perft (http://fusch.mi.fu-berlin.de/publications/Joe-Paper_rotated_bitboards.pdf)

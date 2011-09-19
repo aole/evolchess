@@ -21,7 +21,7 @@
 #define ENGINENAME "Evolution Chess"
 #define MAJOR "0"
 #define MINOR "6"
-#define BUILD "13"
+#define BUILD "14"
 #define STAGE "dev"
 #define VERSION MAJOR "." MINOR "." BUILD "." STAGE
 #define ENGINEFULLNAME ENGINENAME " " VERSION
@@ -66,7 +66,7 @@ enum piece { none = -1, king, queen, rook, bishop, knight, pawn };
 
 static const char notationw[6][2] = { "K", "Q", "R", "B", "N", "P" };
 static const char notationb[6][2] = { "k", "q", "r", "b", "n", "p" };
-static const int  piecevalue[6] = {100000, 900, 500, 305, 300, 100};
+static const int  piecevalue[6] = {100000, 900, 500, 320, 310, 100};
 static const int  VALUEINFINITE = __INT32_MAX__;
 
 //chess board constants
@@ -161,12 +161,6 @@ const bitboard filef = 0x2020202020202020ULL;
 const bitboard fileg = 0x4040404040404040ULL;
 const bitboard fileh = 0x8080808080808080ULL;
 const bitboard file[] = {filea,fileb,filec,filed,filee,filef,fileg,fileh};
-
-// castling moves
-const bitboard wkoo[] = {e1|g1,e8|g8};
-const bitboard wroo[] = {h1|f1,h8|f8};
-const bitboard wkooo[] = {e1|c1,e8|c8};
-const bitboard wrooo[] = {a1|d1,a8|d8};
 
 //initial position of all white and black pieces
 const bitboard start_all[2] = { rank1|rank2, rank7|rank8 };
@@ -378,4 +372,16 @@ const bitboard deg315_moves [] = {
       0,0,0,0,//8
       };
 
+/* Evaluation related constants */
+
+// castling moves
+const bitboard wkoo[] = {e1|g1,e8|g8};
+const bitboard wroo[] = {h1|f1,h8|f8};
+const bitboard wkooo[] = {e1|c1,e8|c8};
+const bitboard wrooo[] = {a1|d1,a8|d8};
+
+const bitboard enemycamp [] = {rank8|rank7|rank6|rank5,rank1|rank2|rank3|rank4};
+const bitboard widercenter = c3|d3|e3|f3|c6|d6|e6|f6|c4|f4;
+const bitboard shortcastledking[] = {g1,g8};
+const bitboard shelter4pawn[] = {f3|f2|g2|h2,f6|f7|g7|h7};
 #endif /* CONSTANTS_H_ */
