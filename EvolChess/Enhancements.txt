@@ -1,9 +1,13 @@
-Enhancements to worked on
-=========================
+Enhancements worked on
+======================
+UI
+--
+implement UCI protocol
+read/load FEN
 
 Evaluation
 ----------
-blocked rook ... (kf1|kg1) & @rh1 #0.6.14
+blocked rook ... (kf1|kg1) & rh1 #0.6.14
 pawn shelter ... kg1&!pg2
 king running from rank1 (opening issue) #0.6.14
 king involvement in endgame
@@ -14,30 +18,44 @@ doubled pawn
 Pieces keeping control of focal center
 +10 for piece on wider center #0.6.14
 queen out early (if before devls. 2 minor pieces)
-exchange pieces when ahead
+exchange pieces when ahead #0.6.14
 B > N > 3p {http://chessprogramming.wikispaces.com/Simplified+evaluation+function} #0.6.14
-implement piece/square table {http://chessprogramming.wikispaces.com}
+implement piece/square table {http://chessprogramming.wikispaces.com/Simplified+evaluation+function}
 
 search
 -----------
 store move number of first move for bishop and knight also
-xx - aspiration window #0.6.14
+aspiration window #0.6.14 **** not working for this version
 search prev. iterations move first #0.6.14
+is in check routing {for stalemates}
+transposition table for 3 fold repetition check
+implement fifty move rule
+use quiescent search #0.6.15
 
 move generation
 ---------------
-if only one move available, do not search it on the first ply. #0.6.14
+if only one move available on the first ply, do not search it any further. #0.6.14
 generate only pseudo-legal moves & check for legality in search. #0.6.14
 use stl::vector #0.6.14
-provide weights to each move for ordering  #0.6.14
+provide weights to each move for ordering #0.6.14
+generate capture only moves routing also #0.6.15
 
 Code Speed up
 -------------
 pre-compute distance between two squares.
-pre-compute control of center for knight, bishop and rook
+faster bitscanning method (http://chessprogramming.wikispaces.com/BitScan) #0.6.15
+using memcpy?
+use triangular array idea for pv collection [http://chessprogramming.wikispaces.com/Triangular+PV-Table]
+to find captured piece, use array of 64 (board pos), update it in do/undo and use it instead of loop.
+implement perft (http://fusch.mi.fu-berlin.de/publications/Joe-Paper_rotated_bitboards.pdf) #0.6.15
+Instead of generating moves of all pieces (for checks), check if king can capture opp. piece acting as that piece (bishop for bishop) [http://www.open-aurec.com/wbforum/viewtopic.php?f=4&t=51343#p194899] #0.6.15
+store enpassant square in array by moveno to speed up undomove
 
-create two flags for each move:
-CAPTURE_NORMAL
-CAPTURE_KING
+Code Clean up
+-------------
+remove hardcoding of board positions. only keep ref. to a1,a2 etc.
+seperate board structure from engine.
 
-implement perft (http://fusch.mi.fu-berlin.de/publications/Joe-Paper_rotated_bitboards.pdf)
+debug
+-----
+store game tree in a xml file

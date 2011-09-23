@@ -1,6 +1,13 @@
 Change History
 ==============
 
+0.6.15
+------
+* faster move generation
+* added quiescent search
+* implemented perft
+* issue with castling when in check resolved
+
 0.6.14
 ------
 evaluation:

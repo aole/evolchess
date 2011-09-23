@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <sstream>
 
 #include "engine.h"
 
@@ -114,6 +115,12 @@ int main() {
         	 //also known as "permanent brain").
          } else if (!strncmp (res, "time", 4)) {
              engine.setowntime(res);
+         } else if (!strncmp (res, "perft", 4)) {
+        	 stringstream ss(res);
+        	 string cmd;
+        	 int d;
+        	 ss>>cmd>>d;
+        	 engine.perft(d);
          } else if (!strncmp (res, "otim", 4)) {
              //Set a clock that always belongs to the opponent.
          } else if (!strcmp (res, "post")) {
