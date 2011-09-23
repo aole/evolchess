@@ -21,7 +21,7 @@
 #define ENGINENAME "Evolution Chess"
 #define MAJOR "0"
 #define MINOR "6"
-#define BUILD "14"
+#define BUILD "15"
 #define STAGE "dev"
 #define VERSION MAJOR "." MINOR "." BUILD "." STAGE
 #define ENGINEFULLNAME ENGINENAME " " VERSION
@@ -47,8 +47,7 @@ E.g.:	0 0 0 0 0 0 0 0
 		1 1 1 1 1 1 1 1  shows all white pieces on the board at the starting position
 { Least Significant bit }
 */
-//0: white
-//1: black
+
 enum side { white = 0, black = 1 };
 
 // which side engine have to play
@@ -142,24 +141,24 @@ const bitboard f1 = 0x20ULL;
 const bitboard g1 = 0x40ULL;
 const bitboard h1 = 0x80ULL;
 
-const bitboard rank8 = 0xff00000000000000ULL;
-const bitboard rank7 = 0xff000000000000ULL;
-const bitboard rank6 = 0xff0000000000ULL;
-const bitboard rank5 = 0xff00000000ULL;
-const bitboard rank4 = 0xff000000ULL;
-const bitboard rank3 = 0xff0000ULL;
-const bitboard rank2 = 0xff00ULL;
-const bitboard rank1 = 0xffULL;
+const bitboard rank8 = a8|b8|c8|d8|e8|f8|g8|h8;
+const bitboard rank7 = a7|b7|c7|d7|e7|f7|g7|h7;
+const bitboard rank6 = a6|b6|c6|d6|e6|f6|g6|h6;
+const bitboard rank5 = a5|b5|c5|d5|e5|f5|g5|h5;
+const bitboard rank4 = a4|b4|c4|d4|e4|f4|g4|h4;
+const bitboard rank3 = a3|b3|c3|d3|e3|f3|g3|h3;
+const bitboard rank2 = a2|b2|c2|d2|e2|f2|g2|h2;
+const bitboard rank1 = a1|b1|c1|d1|e1|f1|g1|h1;
 const bitboard rank[] = {rank1,rank2,rank3,rank4,rank5,rank6,rank7,rank8};
 
-const bitboard filea = 0x0101010101010101ULL;
-const bitboard fileb = 0x0202020202020202ULL;
-const bitboard filec = 0x0404040404040404ULL;
-const bitboard filed = 0x0808080808080808ULL;
-const bitboard filee = 0x1010101010101010ULL;
-const bitboard filef = 0x2020202020202020ULL;
-const bitboard fileg = 0x4040404040404040ULL;
-const bitboard fileh = 0x8080808080808080ULL;
+const bitboard filea = a1|a2|a3|a4|a5|a6|a7|a8;
+const bitboard fileb = b1|b2|b3|b4|b5|b6|b7|b8;
+const bitboard filec = c1|c2|c3|c4|c5|c6|c7|c8;
+const bitboard filed = d1|d2|d3|d4|d5|d6|d7|d8;
+const bitboard filee = e1|e2|e3|e4|e5|e6|e7|e8;
+const bitboard filef = f1|f2|f3|f4|f5|f6|f7|f8;
+const bitboard fileg = g1|g2|g3|g4|g5|g6|g7|g8;
+const bitboard fileh = h1|h2|h3|h4|h5|h6|h7|h8;
 const bitboard file[] = {filea,fileb,filec,filed,filee,filef,fileg,fileh};
 
 //initial position of all white and black pieces
@@ -384,4 +383,16 @@ const bitboard enemycamp [] = {rank8|rank7|rank6|rank5,rank1|rank2|rank3|rank4};
 const bitboard widercenter = c3|d3|e3|f3|c6|d6|e6|f6|c4|f4;
 const bitboard shortcastledking[] = {g1,g8};
 const bitboard shelter4pawn[] = {f3|f2|g2|h2,f6|f7|g7|h7};
+
+const int index64[64] = {
+    0,  1,  2, 53,  3,  7, 54, 27,
+    4, 38, 41,  8, 34, 55, 48, 28,
+   62,  5, 39, 46, 44, 42, 22,  9,
+   24, 35, 59, 56, 49, 18, 29, 11,
+   63, 52,  6, 26, 37, 40, 33, 47,
+   61, 45, 43, 21, 23, 58, 17, 10,
+   51, 25, 36, 32, 60, 20, 57, 16,
+   50, 31, 19, 15, 30, 14, 13, 12
+};
+
 #endif /* CONSTANTS_H_ */

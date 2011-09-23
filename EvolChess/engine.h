@@ -36,7 +36,6 @@ class cmove {
 private:
 	char mov[8];
 public:
-	static int cnt;
 	static cmove *top;
 
 	bitboard from; //square from where piece is move
@@ -51,31 +50,18 @@ public:
 
 	cmove *next;
 
-	cmove() {
-		cmove(0, 0, 0, 0, 0, 0);
+	cmove() :
+		from(0), to(0), mov2(0), piece(0), promotedto(0), flags(0), captured(
+				0), weight(0), next(NULL) {
 	}
 	cmove(cmove *m) {
 		cmove(m->from, m->to, m->mov2, m->piece, m->promotedto, m->flags,
 				m->captured);
-		//cout<<"m:"<<getMoveTxt()<<endl;
 	}
 	cmove(bitboard f, bitboard t, bitboard m2 = 0, byte p = 0, byte pt = 0,
-			byte flg = 0, byte c = 0) {
-		cnt++;
-		from = f;
-		to = t;
-		mov2 = m2;
-		piece = p;
-		promotedto = pt;
-		flags = flg;
-		captured = c;
-		next = NULL;
-		weight = 0;
-		//cout<<"m:"<<getMoveTxt()<<endl;
-	}
-	~cmove() {
-		cnt--;
-		//cout<<"d:"<<getMoveTxt()<<endl;
+			byte flg = 0, byte c = 0) :
+			from(f), to(t), mov2(m2), piece(p), promotedto(pt), flags(flg), captured(
+					c), weight(0), next(NULL) {
 	}
 
 	void set(bitboard f, bitboard t, bitboard m2, byte p, byte pt, byte flg,
@@ -260,7 +246,7 @@ public:
 class PVLine2 {
 public:
 	int num; // Number of moves in the line.
-	cmove argmove[12]; // The line.
+	cmove argmove[15]; // The line.
 
 	PVLine2() {
 		num = 0;
@@ -350,25 +336,30 @@ protected:
 	void gen_knight_pseudo_moves(vector<cmove*>&v);
 	void gen_rook_pseudo_moves(byte piecefor, bitboard ar, vector<cmove*>&v);
 	void gen_bishop_pseudo_moves(byte piecefor, bitboard ar, vector<cmove*>&v);
-/*
-	void gen_atk_moves(side moveof, bitboard& atkbrd);
-	void gen_king_atk(side movefor, bitboard& atkbrd);
-	void gen_pawn_atk(side moveof, bitboard& atkbrd);
-	void gen_knight_atk(side moveof, bitboard& atkbrd);
-	void gen_rook_atk(side moveof, bitboard& atkbrd);
-	void gen_bishop_atk(side moveof, bitboard& atkbrd);
-*/
 
-	void gen_atk_moves( bitboard& atkbrd);
+	// pseudo-legal moves generation
+	void generate_captures(vector<cmove*>&v);
+	void gen_pawn_captures(vector<cmove*>&v);
+	void gen_king_captures(vector<cmove*>&v);
+	void gen_knight_captures(vector<cmove*>&v);
+	void gen_rook_captures(byte piecefor, bitboard ar, vector<cmove*>&v);
+	void gen_bishop_captures(byte piecefor, bitboard ar, vector<cmove*>&v);
+
+	void gen_atk_moves(bitboard& atkbrd);
 	void gen_king_atk(bitboard& atkbrd);
 	void gen_pawn_atk(bitboard& atkbrd);
-	void gen_knight_atk( bitboard& atkbrd);
+	void gen_knight_atk(bitboard& atkbrd);
 	void gen_rook_atk(bitboard& atkbrd);
 	void gen_bishop_atk(bitboard& atkbrd);
 
-	int alphabeta(int ply, int depth, int alpha, int beta,
-			PVLine2 *pline);
-	int qs(int depth, int alpha, int beta);
+	bitboard rook_atk_brd(int lsbint, side gf);
+	bitboard bishop_atk_brd(int lsbint, side gf);
+	bitboard knight_atk_brd(int lsbint, side gf);
+	bitboard pawn_atk_brd(bitboard lsb, side gf);
+	bitboard king_atk_brd(int lsbint, side gf);
+
+	int alphabeta(int ply, int depth, int alpha, int beta, PVLine2 *pline);
+	int qs(int alpha, int beta, PVLine2 *pline);
 
 	MoveNode *insert_sort(MoveNode *par, MoveNode *c);
 	int evaluate();
@@ -401,16 +392,26 @@ public:
 	int sidetomove() {
 		return moveof;
 	}
-	;
+
 	void domove(cmove *move);
 	void undomove(cmove *move);
 	void undolastmove();
 	int input_move(char *m);
 
-	int get_bit_pos(bitboard b);
+	// get position of a bit in integer
+	inline int get_bit_pos(bitboard bb) {
+		//return index64[((bb & -bb) * 0x022fdd63cc95386dULL) >> 58];
+		return index64[(bb * 0x022fdd63cc95386dULL) >> 58];
+	}
 
 	void inittime(char *t);
 	void setowntime(char *t);
+
+	int isBoardLegal(cmove *m);
+	int isUnderAttack(bitboard pos, side from, side self);
+
+	void perft(int depth);
+	void perftloop(int depth, int &nodes);
 };
 
 #endif /* ENGINE_H_ */
