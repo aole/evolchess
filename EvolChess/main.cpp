@@ -13,8 +13,6 @@
 
 #include "engine.h"
 
-using namespace std;
-
 char *getcurtime() {
      time_t curtime;
 

@@ -193,7 +193,7 @@ void Engine::show_board() {
 	for (int r = 8; r > 0; r--) {
 		cout << r << " ";
 		for (int f = 0; f < 8; f++) {
-			p = rank[r - 1] & file[f];
+			p = crank[r - 1] & file[f];
 			strcpy(toprint, "*");
 			for (int i = 0; i < 6; i++)
 				if (pieces[white][i] & p) {

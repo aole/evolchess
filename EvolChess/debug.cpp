@@ -14,12 +14,12 @@ void cdebug::open_debug_file() {
 
 void cdebug::debug (char *m) {
   //myfile << m;
-  cout << m;
+  std::cout << m;
 }
 
 void cdebug::debug (int n) {
 	//myfile << n;
-	cout << n;
+	std::cout << n;
 }
 void cdebug::close_debug_file() {
   myfile.close();

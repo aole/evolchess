@@ -21,7 +21,7 @@
 #define ENGINENAME "Evolution Chess"
 #define MAJOR "0"
 #define MINOR "6"
-#define BUILD "15"
+#define BUILD "16"
 #define STAGE "dev"
 #define VERSION MAJOR "." MINOR "." BUILD "." STAGE
 #define ENGINEFULLNAME ENGINENAME " " VERSION
@@ -149,7 +149,7 @@ const bitboard rank4 = a4|b4|c4|d4|e4|f4|g4|h4;
 const bitboard rank3 = a3|b3|c3|d3|e3|f3|g3|h3;
 const bitboard rank2 = a2|b2|c2|d2|e2|f2|g2|h2;
 const bitboard rank1 = a1|b1|c1|d1|e1|f1|g1|h1;
-const bitboard rank[] = {rank1,rank2,rank3,rank4,rank5,rank6,rank7,rank8};
+const bitboard crank[] = {rank1,rank2,rank3,rank4,rank5,rank6,rank7,rank8};
 
 const bitboard filea = a1|a2|a3|a4|a5|a6|a7|a8;
 const bitboard fileb = b1|b2|b3|b4|b5|b6|b7|b8;
