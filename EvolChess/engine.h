@@ -15,6 +15,8 @@
 #include "constants.h"
 #include "debug.h"
 
+using namespace std;
+
 //move structure to store book moves
 class simplemove {
 public:
@@ -22,7 +24,7 @@ public:
 	simplemove *next;
 	simplemove *sibling;
 	int sibcnt;
-
+	
 	simplemove(bitboard m) {
 		move = m;
 		next = NULL;
