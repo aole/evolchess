@@ -1,0 +1,18 @@
+# Introduction #
+
+The following content describes the configuration of a popular user interface for chess 'Winboard' with Evolution Chess.
+
+
+# Details #
+
+1. Download and install [WinBoard](http://www.open-aurec.com/wbforum/viewtopic.php?t=49439).
+
+2. Download latest version of [Evolution Chess](http://code.google.com/p/evolchess/downloads/list).
+
+3. Create a windows short cut to the winboard exe file:
+`"X:\xxx\winboard.exe" -debug /cp /fcp=EvolChess /fd="Y:\yyy" /scp=GNUChess`
+
+where X is the drive where winboard is installed and xxx is the installation directory pointing to winboard.exe.
+Y is similarly the drive where you have downloaded EvolChess.exe and yyy is the directory pointing to it.
+
+4. Now run WinBoard using the shortcut just created and enjoy Evolution Chess with a nice UI.
