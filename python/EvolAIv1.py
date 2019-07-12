@@ -7,6 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
+bit_layers = 12 # 6 pieces for each side
+learning_rate = 0.01
+
 def create_input(board):
     posbits = []
     
@@ -85,9 +88,9 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=10, shuffle=True)
 
-    model = Model(12, 24)
+    model = Model(bit_layers, 24)
     
-    optimizer = T.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = T.optim.SGD(model.parameters(), lr=learning_rate)
     max_epoch = 1000
     log_interval = 100
     
