@@ -7,7 +7,7 @@ max_wins = 10000
 won_games = 0
 game_num = 0
 
-file = open('mio.txt', 'w')
+file = open('mio2.txt', 'w')
 while 1:
     # start with a new game
     board = chess.Board()
