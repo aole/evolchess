@@ -2,19 +2,31 @@ from __future__ import print_function
 
 import chess
 import numpy as np
+import time
 
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-bit_layers = 12 # 6 pieces for each side
-learning_rate = 0.01
 train = True
 load_model = False
 
+max_epoch = 1000
+log_interval = 200
+    
+# parameters
+bit_layers = 12 + 2 # 6 pieces for each side + 2 attack planes
+learning_rate = 0.01
+
+# model structure
+convolution_layers = 3
+fully_connected = 1
+
+# consistent testing
 T.manual_seed(4)
 
+# check for gpu
 device = T.device('cpu')
 if T.cuda.is_available():
     device = T.device('cuda')
@@ -22,23 +34,39 @@ if T.cuda.is_available():
 def create_input(board):
     posbits = []
     
-    wss = chess.SquareSet()
-    bss = chess.SquareSet()
+    #wss = chess.SquareSet()
+    #bss = chess.SquareSet()
 
     for piece in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]:
-        wss = wss.union(board.pieces(piece, chess.WHITE))
+        #wss = wss.union(board.pieces(piece, chess.WHITE))
         posbits += board.pieces(piece, chess.WHITE).tolist()
 
     for piece in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]:
-        bss = bss.union(board.pieces(piece, chess.BLACK))
+        #bss = bss.union(board.pieces(piece, chess.BLACK))
         posbits += board.pieces(piece, chess.BLACK).tolist()
+        
+    
+    # all attack squares
+    to_sqs = chess.SquareSet()
+    for move in board.legal_moves:
+        to_sqs.add(move.to_square)
+    posbits += to_sqs.tolist()
+    
+    # all opponent attack squares
+    to_sqs = chess.SquareSet()
+    board.turn = not board.turn
+    for move in board.legal_moves:
+        to_sqs.add(move.to_square)
+    board.turn = not board.turn
+    posbits += to_sqs.tolist()
+    
     '''
     posbits += wss.tolist()
     posbits += bss.tolist()
     posbits += wss.union(bss).tolist()
     '''
     x = T.tensor(posbits, dtype = T.float32)
-    x = x.reshape([12,8,8])
+    x = x.reshape([bit_layers,8,8])
     return x
 
 class Model(nn.Module):
@@ -48,37 +76,50 @@ class Model(nn.Module):
         kernel_size = 3
         padding = kernel_size//2
         
-        self.conv_out_nodes = out_channels * 8 * 8 * 4
+        self.conv_out_nodes = out_channels * 8 * 8
         
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
         self.bn1 = nn.BatchNorm2d(out_channels) # **** WOW ****
-        #self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*2, kernel_size, padding=padding)
-        self.bn2 = nn.BatchNorm2d(out_channels*2) # **** WOW ****
-        self.conv3 = nn.Conv2d(out_channels*2, out_channels*4, kernel_size, padding=padding)
-        self.bn3 = nn.BatchNorm2d(out_channels*4)
-        #self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        #self.conv2 = nn.Conv2d(out_channels, out_channels*2, kernel_size, padding=padding)
+        
+        if convolution_layers>=2:
+            self.conv2 = nn.Conv2d(out_channels, out_channels*2, kernel_size, padding=padding)
+            self.bn2 = nn.BatchNorm2d(out_channels*2) # **** WOW ****
+            self.conv_out_nodes *= 2
+
+        if convolution_layers>=3:
+            self.conv3 = nn.Conv2d(out_channels*2, out_channels*4, kernel_size, padding=padding)
+            self.bn3 = nn.BatchNorm2d(out_channels*4)
+            self.conv_out_nodes *= 2
+        
         self.fc1 = nn.Linear(self.conv_out_nodes, 1024)
         self.drop1 = nn.Dropout(p=0.5)
-        self.fc2 = nn.Linear(1024, 1024)
-        self.drop2 = nn.Dropout(p=0.5)
+        
+        if fully_connected>=2:
+            self.fc2 = nn.Linear(1024, 1024)
+            self.drop2 = nn.Dropout(p=0.5)
+        
         self.fcf = nn.Linear(1024, 64*64)
     
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = self.bn1(x)
-        x = F.relu(self.conv2(x))
-        x = self.bn2(x)
-        x = F.relu(self.conv3(x))
-        x = self.bn3(x)
-        #x = self.pool2(x)
-        #x = F.relu(self.conv2(x))
-        x = x.reshape(-1, self.conv_out_nodes)
+        
+        if convolution_layers >= 2:
+            x = F.relu(self.conv2(x))
+            x = self.bn2(x)
+            
+        if convolution_layers >= 3:
+            x = F.relu(self.conv3(x))
+            x = self.bn3(x)
+        
+        x = x.view(-1, self.conv_out_nodes)
         x = F.relu(self.fc1(x))
         x = self.drop1(x)
-        x = F.relu(self.fc2(x))
-        x = self.drop2(x)
+        
+        if fully_connected >= 2:
+            x = F.relu(self.fc2(x))
+            x = self.drop2(x)
+            
         x = self.fcf(x)
         x = F.log_softmax(x, dim=1)
         # x = F.softmax(x, dim=1) -- bad
@@ -91,14 +132,14 @@ class FenDataset(Dataset):
         self.all_fen = []
         with open(filename, 'r') as f:
             for line in f.readlines():
-                fen, move = line[:-1].split('=')
+                fen, move = line[:-1].split(',')
                 self.all_fen.append((fen, move))
                 
                 board = chess.Board(fen)
                 x = create_input(board)
                 move = chess.Move.from_uci(move)
-                #y_real = T.zeros(64*64, dtype=T.long)
                 pos = move.from_square*64+move.to_square
+                #y_real = T.zeros(64*64, dtype=T.long) # one hot
                 #y_real[pos] = 1.
                 self.all_data.append((x, pos, line[:-1]))
         
@@ -112,6 +153,7 @@ class FenDataset(Dataset):
         return self.all_fen[idx]
         
 if __name__ == '__main__':
+    print('Setting up database')
     dataset = FenDataset('mio.txt')
 
     train_size = int(0.8 * len(dataset))
@@ -134,15 +176,14 @@ if __name__ == '__main__':
         except:
             pass
     
-    optimizer = T.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = T.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.5)
     #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) #slow
-    max_epoch = 1000
-    log_interval = 200
     
     for epoch in range(1, max_epoch+1):
         # TRAIN
         if train:
             print('Training...')
+            t0 = time.time()
             model.train()
             for batch_idx, (data, target, fen) in enumerate(train_loader):
                 data, target = data.to(device), target.to(device)
@@ -155,7 +196,7 @@ if __name__ == '__main__':
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-
+            print('Time taken', round(time.time()-t0, 2))
             # SAVE
             T.save(model.state_dict(),"nn.pt")
         
@@ -187,7 +228,7 @@ if __name__ == '__main__':
         f = outb//64
         t = outb-f*64
         outmove = chess.Move(f,t)
-        fen, move = line.split('=')
+        fen, move = line.split(',')
         board = chess.Board(fen)
         out = out.cpu().detach().numpy()
         
@@ -209,7 +250,7 @@ if __name__ == '__main__':
         for s in scores:
             m = s[0].decode("utf-8")
             if m[-1]=='#':
-                m = '*  '+m+'   *'
+                m = '©   '+m+'   ®'
             print(m,'=',round(s[1],3),end='; ')
         print()
         

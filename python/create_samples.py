@@ -3,11 +3,13 @@
 import chess
 import numpy as np
 
-max_wins = 10000
+max_wins = 20000
 won_games = 0
 game_num = 0
 
-file = open('mio2.txt', 'w')
+find_string = '0-1'
+
+file = open('bmio.txt', 'w')
 while 1:
     # start with a new game
     board = chess.Board()
@@ -33,7 +35,7 @@ while 1:
             result = board.result(claim_draw=True)
             board.pop()
             
-            if result=='1-0':
+            if result==find_string:
                 # found white mating
                 if found:
                     found = None
