@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import chess
 import numpy as np
@@ -12,6 +13,12 @@ learning_rate = 0.01
 train = True
 load_model = False
 
+T.manual_seed(4)
+
+device = T.device('cpu')
+if T.cuda.is_available():
+    device = T.device('cuda')
+    
 def create_input(board):
     posbits = []
     
@@ -41,28 +48,40 @@ class Model(nn.Module):
         kernel_size = 3
         padding = kernel_size//2
         
-        self.conv_out_nodes = out_channels * 8 * 8 #* 2
+        self.conv_out_nodes = out_channels * 8 * 8 * 4
         
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
         self.bn1 = nn.BatchNorm2d(out_channels) # **** WOW ****
+        #self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(out_channels, out_channels*2, kernel_size, padding=padding)
+        self.bn2 = nn.BatchNorm2d(out_channels*2) # **** WOW ****
+        self.conv3 = nn.Conv2d(out_channels*2, out_channels*4, kernel_size, padding=padding)
+        self.bn3 = nn.BatchNorm2d(out_channels*4)
+        #self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         #self.conv2 = nn.Conv2d(out_channels, out_channels*2, kernel_size, padding=padding)
         self.fc1 = nn.Linear(self.conv_out_nodes, 1024)
         self.drop1 = nn.Dropout(p=0.5)
-        #self.fc2 = nn.Linear(1024, 1024)
-        #self.drop2 = nn.Dropout(p=0.5)
+        self.fc2 = nn.Linear(1024, 1024)
+        self.drop2 = nn.Dropout(p=0.5)
         self.fcf = nn.Linear(1024, 64*64)
     
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = self.bn1(x)
+        x = F.relu(self.conv2(x))
+        x = self.bn2(x)
+        x = F.relu(self.conv3(x))
+        x = self.bn3(x)
+        #x = self.pool2(x)
         #x = F.relu(self.conv2(x))
         x = x.reshape(-1, self.conv_out_nodes)
         x = F.relu(self.fc1(x))
         x = self.drop1(x)
-        #x = F.relu(self.fc2(x))
-        #x = self.drop2(x)
+        x = F.relu(self.fc2(x))
+        x = self.drop2(x)
         x = self.fcf(x)
         x = F.log_softmax(x, dim=1)
+        # x = F.softmax(x, dim=1) -- bad
         
         return x
         
@@ -106,6 +125,8 @@ if __name__ == '__main__':
 
     # NN
     model = Model(bit_layers, 24)
+    model.to(device)
+    
     # Load weights
     if load_model:
         try:
@@ -114,6 +135,7 @@ if __name__ == '__main__':
             pass
     
     optimizer = T.optim.SGD(model.parameters(), lr=learning_rate)
+    #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) #slow
     max_epoch = 1000
     log_interval = 200
     
@@ -123,7 +145,7 @@ if __name__ == '__main__':
             print('Training...')
             model.train()
             for batch_idx, (data, target, fen) in enumerate(train_loader):
-                #data, target = data.to(device), target.to(device)
+                data, target = data.to(device), target.to(device)
                 optimizer.zero_grad()
                 output = model(data)
                 loss = F.nll_loss(output, target)
@@ -133,7 +155,6 @@ if __name__ == '__main__':
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-            print('Loss: {:.6f}'.format(loss.item()))
 
             # SAVE
             T.save(model.state_dict(),"nn.pt")
@@ -148,6 +169,7 @@ if __name__ == '__main__':
         games_sample = []
         with T.no_grad():
             for data, target, fen in test_loader:
+                data, target = data.to(device), target.to(device)
                 output = model(data)
                 test_loss += F.nll_loss(output, target, reduction='sum').item() # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
@@ -167,7 +189,15 @@ if __name__ == '__main__':
         outmove = chess.Move(f,t)
         fen, move = line.split('=')
         board = chess.Board(fen)
-        out = out.detach().numpy()
+        out = out.cpu().detach().numpy()
+        
+        move = chess.Move.from_uci(move)
+        print(board)
+        try:
+            print(board.san(move), board.san(outmove), out[outb])
+        except:
+            pass
+        
         dtype=[('move', 'S10'), ('score', float)]
         scores = []
         #out[::-1].sort()
@@ -177,23 +207,9 @@ if __name__ == '__main__':
         scores = np.array(scores, dtype=dtype)
         scores[::-1].sort(order='score')
         for s in scores:
-            print(s[0].decode("utf-8"),'=',round(s[1],3),end='; ')
+            m = s[0].decode("utf-8")
+            if m[-1]=='#':
+                m = '*  '+m+'   *'
+            print(m,'=',round(s[1],3),end='; ')
         print()
-        move = chess.Move.from_uci(move)
-        print(board)
-        try:
-            print(board.san(move), board.san(outmove), out[outb])
-        except:
-            pass
-        
-        '''
-        fen, move = test_dataset.getFen(0)
-        board = chess.Board(fen)
-        print(board)
-        print(move)
-        
-        data, target = test_dataset[0]
-        output = model(data)
-        print('Output:', output)
-        '''
         
