@@ -9,6 +9,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
+from tensorboardX import SummaryWriter
+writer = SummaryWriter('runs/EvolAIv1')
+
 train = True
 load_model = False
 
@@ -177,7 +180,7 @@ if __name__ == '__main__':
             pass
     
     optimizer = T.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.5)
-    #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) #slow
+    #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) # not learning
     
     for epoch in range(1, max_epoch+1):
         # TRAIN
@@ -196,6 +199,10 @@ if __name__ == '__main__':
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
+                        
+                writer.add_scalar('Train Loss', loss.item(), (epoch-1)*len(train_dataset)+batch_idx)
+                writer.flush()
+                
             print('Time taken', round(time.time()-t0, 2))
             # SAVE
             T.save(model.state_dict(),"nn.pt")
@@ -218,9 +225,13 @@ if __name__ == '__main__':
                 games_sample.append((fen[-1], output[-1]))
         test_loss /= len(test_loader.dataset)
 
+        accuracy = 100. * correct / len(test_loader.dataset)
         print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            test_loss, correct, len(test_loader.dataset),
-            100. * correct / len(test_loader.dataset)))
+            test_loss, correct, len(test_loader.dataset), accuracy))
+        
+        writer.add_scalar('Test Loss', test_loss, epoch)
+        writer.add_scalar('Accuracy', accuracy, epoch)
+        writer.flush()
         
         # VISUAL
         line, out = games_sample[np.random.choice(len(games_sample))]
