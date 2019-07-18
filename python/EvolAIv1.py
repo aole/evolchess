@@ -10,16 +10,16 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from tensorboardX import SummaryWriter
-writer = SummaryWriter('runs/EvolAIv1')
+writer = SummaryWriter('runs/EvolAIv1.5')
 
 train = True
 load_model = False
 
-max_epoch = 1000
+max_epoch = 100
 log_interval = 200
     
 # parameters
-bit_layers = 12 + 2 # 6 pieces for each side + 2 attack planes
+bit_layers = 12 + 2 #+ 1# 6 pieces for each side + 2 attack planes + 1 enpassant sqr
 learning_rate = 0.01
 
 # model structure
@@ -63,6 +63,9 @@ def create_input(board):
     board.turn = not board.turn
     posbits += to_sqs.tolist()
     
+    #en passant square
+    #posbits += (chess.SquareSet(chess.BB_SQUARES[board.ep_square]) if board.ep_square else chess.SquareSet()).tolist()
+    
     '''
     posbits += wss.tolist()
     posbits += bss.tolist()
@@ -73,12 +76,13 @@ def create_input(board):
     return x
 
 class Model(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels):
         super(Model, self).__init__()
     
         kernel_size = 3
         padding = kernel_size//2
         
+        out_channels = in_channels * 3
         self.conv_out_nodes = out_channels * 8 * 8
         
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
@@ -169,7 +173,7 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_dataset, batch_size=10, shuffle=True)
 
     # NN
-    model = Model(bit_layers, 24)
+    model = Model(bit_layers)
     model.to(device)
     
     # Load weights
@@ -200,8 +204,8 @@ if __name__ == '__main__':
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
                         
-                writer.add_scalar('Train Loss', loss.item(), (epoch-1)*len(train_dataset)+batch_idx)
-                writer.flush()
+            writer.add_scalar('Train Loss', loss.item(), epoch-1)
+            writer.flush()
                 
             print('Time taken', round(time.time()-t0, 2))
             # SAVE
@@ -229,8 +233,8 @@ if __name__ == '__main__':
         print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, len(test_loader.dataset), accuracy))
         
-        writer.add_scalar('Test Loss', test_loss, epoch)
-        writer.add_scalar('Accuracy', accuracy, epoch)
+        writer.add_scalar('Test Loss', test_loss, epoch-1)
+        writer.add_scalar('Accuracy', accuracy, epoch-1)
         writer.flush()
         
         # VISUAL
