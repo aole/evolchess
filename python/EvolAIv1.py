@@ -10,14 +10,17 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from tensorboardX import SummaryWriter
-writer = SummaryWriter('C:/temp/tb/runs/EvolAIv1.8')
+writer = SummaryWriter('C:/temp/tb/runs/EvolAIv1.9')
 
 from tqdm import tqdm
 
 #datafiles = ['smallmio.txt']
+#datafiles = ['mio.txt']
 datafiles = ['mio.txt', 'bmio.txt']
+
 train = True
 load_model = False
+save_model = False
 
 max_epoch = 100
 log_interval = 300
@@ -25,13 +28,10 @@ log_interval = 300
 # parameters
 #  1    Side to move
 # 12    Position of each piece (both sides)
-#  6    to squares of own pieces
-#  1    to squares for oppo
-#  1    to squeres for oppo king
+# 12    to squares of each pieces (both sides)
 bit_layers = 1 + \
             12 + \
-             6 + \
-             2
+            12
 learning_rate = 0.01
 
 # model structure
@@ -80,16 +80,28 @@ def create_input(board):
     posbits += to_queen_sqs.tolist()+to_rook_sqs.tolist()+to_bishop_sqs.tolist()+to_knight_sqs.tolist()+to_king_sqs.tolist()+to_pawn_sqs.tolist()
     
     # all opponent attack squares
-    to_sqs = chess.SquareSet()
+    board.turn = not board.turn
+    to_queen_sqs = chess.SquareSet()
+    to_rook_sqs = chess.SquareSet()
+    to_bishop_sqs = chess.SquareSet()
+    to_knight_sqs = chess.SquareSet()
     to_king_sqs = chess.SquareSet()
-    board.turn = not board.turn
+    to_pawn_sqs = chess.SquareSet()
     for move in board.legal_moves:
-        to_sqs.add(move.to_square)
-        if board.san(move)[0]=='K' or board.san(move)[0]=='O':
+        if board.san(move)[0]=='Q':
+            to_queen_sqs.add(move.to_square)
+        elif board.san(move)[0]=='R':
+            to_rook_sqs.add(move.to_square)
+        elif board.san(move)[0]=='B':
+            to_bishop_sqs.add(move.to_square)
+        elif board.san(move)[0]=='N':
+            to_knight_sqs.add(move.to_square)
+        elif board.san(move)[0]=='K' or board.san(move)[0]=='O':
             to_king_sqs.add(move.to_square)
+        else:
+            to_pawn_sqs.add(move.to_square)
+    posbits += to_queen_sqs.tolist()+to_rook_sqs.tolist()+to_bishop_sqs.tolist()+to_knight_sqs.tolist()+to_king_sqs.tolist()+to_pawn_sqs.tolist()
     board.turn = not board.turn
-    posbits += to_sqs.tolist()
-    posbits += to_king_sqs.tolist()
     
     #en passant square
     #posbits += (chess.SquareSet(chess.BB_SQUARES[board.ep_square]) if board.ep_square else chess.SquareSet()).tolist()
@@ -102,13 +114,12 @@ class FenDataset(Dataset):
     def __init__(self, filenames):
         self.all_data = []
         self.all_fen = []
-        print('Files to load:',len(filenames))
-        for filename in filenames:
+        for idx, filename in enumerate(filenames):
             with open(filename, 'r') as f:
                 lines = f.readlines()
                 tot = len(lines)
-                print(filename,'Total:', tot)
                 pbar = tqdm(total=tot)
+                pbar.set_description('Loading '+filename+' ('+str(idx+1)+'/'+str(len(filenames))+')')
                 for i, line in enumerate(lines):
                     fen, move = line[:-1].split(',')
                     self.all_fen.append((fen, move))
@@ -189,14 +200,13 @@ class Model(nn.Module):
         return x
         
 if __name__ == '__main__':
-    print('Setting up database')
     dataset = FenDataset(datafiles)
 
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = T.utils.data.random_split(dataset, [train_size, test_size])
 
-    print(len(dataset), len(train_dataset), len(test_dataset))
+    print('Samples:',len(dataset), 'Total,', len(train_dataset),'Train,', len(test_dataset),'Test.')
     
     train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=10, shuffle=True)
@@ -221,9 +231,9 @@ if __name__ == '__main__':
     for epoch in range(max_epoch):
         # TRAIN
         if train:
-            print('Training...')
-            t0 = time.time()
             model.train()
+            pbar = tqdm(total=len(train_loader))
+            pbar.set_description('Training ('+str(epoch)+')')
             for batch_idx, (data, target, fen) in enumerate(train_loader):
                 data, target = data.to(device), target.to(device)
                 optimizer.zero_grad()
@@ -231,23 +241,25 @@ if __name__ == '__main__':
                 loss = F.nll_loss(output, target)
                 loss.backward()
                 optimizer.step()
+                
                 if batch_idx % log_interval == 0:
+                    pbar.set_postfix(loss=loss.item())
+                    '''
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                        
+                    '''
+                pbar.update(1)
+            pbar.close()
+            
             writer.add_scalar('Train Loss', loss.item(), epoch)
             writer.flush()
             
-            timediff = time.time()-t0
-            mins = timediff//60
-            secs = timediff-mins*60
-            print('Time taken:', str(mins)+':'+str(int(secs)))
             # SAVE
-            T.save(model.state_dict(),"nn.pt")
+            if save_model:
+                T.save(model.state_dict(),"nn.pt")
         
         # TEST
-        print('Testing...')
         model.eval()
         
         test_loss = 0
@@ -266,7 +278,7 @@ if __name__ == '__main__':
         test_loss /= len(test_loader.dataset)
 
         accuracy = 100. * correct / len(test_loader.dataset)
-        print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
             test_loss, correct, len(test_loader.dataset), accuracy))
         
         writer.add_scalar('Test Loss', test_loss, epoch)
@@ -274,7 +286,7 @@ if __name__ == '__main__':
         writer.flush()
         
         # VISUAL
-        print('Write evaluation...')
+        #print('Writing evaluation...')
         testfile.write('Epoch: '+str(epoch)+'\n')
         games_sample = random.sample(games_sample, 10)
         for idx, sample in enumerate(games_sample):
@@ -298,7 +310,6 @@ if __name__ == '__main__':
             
             dtype=[('move', 'S10'), ('score', float)]
             scores = []
-            #out[::-1].sort()
             for m in board.legal_moves:
                 pos = m.from_square*64 + m.to_square
                 scores.append((board.san(m), out[pos]))
