@@ -10,16 +10,16 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from tensorboardX import SummaryWriter
-writer = SummaryWriter('runs/EvolAIv1.5')
+writer = SummaryWriter('runs/EvolAIv1.8')
 
 train = True
 load_model = False
 
 max_epoch = 100
-log_interval = 200
+log_interval = 300
     
 # parameters
-bit_layers = 12 + 2 #+ 1# 6 pieces for each side + 2 attack planes + 1 enpassant sqr
+bit_layers = 12 + 3 #+ 1# 6 pieces for each side + 2 attack planes + 1 enpassant sqr
 learning_rate = 0.01
 
 # model structure
@@ -57,11 +57,15 @@ def create_input(board):
     
     # all opponent attack squares
     to_sqs = chess.SquareSet()
+    to_king_sqs = chess.SquareSet()
     board.turn = not board.turn
     for move in board.legal_moves:
         to_sqs.add(move.to_square)
+        if board.san(move)[0]=='K' or board.san(move)[0]=='O':
+            to_king_sqs.add(move.to_square)
     board.turn = not board.turn
     posbits += to_sqs.tolist()
+    posbits += to_king_sqs.tolist()
     
     #en passant square
     #posbits += (chess.SquareSet(chess.BB_SQUARES[board.ep_square]) if board.ep_square else chess.SquareSet()).tolist()
@@ -186,7 +190,7 @@ if __name__ == '__main__':
     optimizer = T.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.5)
     #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) # not learning
     
-    for epoch in range(1, max_epoch+1):
+    for epoch in range(max_epoch):
         # TRAIN
         if train:
             print('Training...')
@@ -204,7 +208,7 @@ if __name__ == '__main__':
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
                         
-            writer.add_scalar('Train Loss', loss.item(), epoch-1)
+            writer.add_scalar('Train Loss', loss.item(), epoch)
             writer.flush()
                 
             print('Time taken', round(time.time()-t0, 2))
@@ -233,8 +237,8 @@ if __name__ == '__main__':
         print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, len(test_loader.dataset), accuracy))
         
-        writer.add_scalar('Test Loss', test_loss, epoch-1)
-        writer.add_scalar('Accuracy', accuracy, epoch-1)
+        writer.add_scalar('Test Loss', test_loss, epoch)
+        writer.add_scalar('Accuracy', accuracy, epoch)
         writer.flush()
         
         # VISUAL

@@ -46,7 +46,7 @@ while 1:
         if found:
             won_games += 1
             print(found, won_games, end='')
-            file.write(board.fen()+'='+found.uci())
+            file.write(board.fen()+','+found.uci())
             file.write('\n')
             file.flush()
             break
