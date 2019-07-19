@@ -14,16 +14,22 @@ writer = SummaryWriter('C:/temp/tb/runs/EvolAIv1.9')
 
 from tqdm import tqdm
 
-#datafiles = ['smallmio.txt']
+# consistent testing
+T.manual_seed(4)
+
+datafiles = ['smallmio.txt']
 #datafiles = ['mio.txt']
-datafiles = ['mio.txt', 'bmio.txt']
+#datafiles = ['mio.txt', 'bmio.txt']
 
 train = True
 load_model = False
-save_model = False
+save_model = True
 
-max_epoch = 100
+max_epoch = 500
 log_interval = 300
+early_stopping_patience = 10
+best_score = None
+best_accuracy = None
 
 # parameters
 #  1    Side to move
@@ -38,9 +44,6 @@ learning_rate = 0.01
 convolution_layers = 2 #3
 fully_connected = 1
 in_out_channel_multiplier = 2 #3
-
-# consistent testing
-T.manual_seed(4)
 
 # check for gpu
 device = T.device('cpu')
@@ -142,26 +145,28 @@ class Model(nn.Module):
         self.fcf = nn.Linear(1024, 64*64)
     
     def forward(self, x):
-        x = F.relu(self.conv1(x))
+        x = F.leaky_relu(self.conv1(x))
         x = self.bn1(x)
         
         if convolution_layers >= 2:
-            x = F.relu(self.conv2(x))
+            x = F.leaky_relu(self.conv2(x))
             x = self.bn2(x)
             
         if convolution_layers >= 3:
-            x = F.relu(self.conv3(x))
+            x = F.leaky_relu(self.conv3(x))
             x = self.bn3(x)
         
         x = x.view(-1, self.conv_out_nodes)
-        x = F.relu(self.fc1(x))
+        x = F.leaky_relu(self.fc1(x))
         x = self.drop1(x)
         
         if fully_connected >= 2:
-            x = F.relu(self.fc2(x))
+            x = F.leaky_relu(self.fc2(x))
             x = self.drop2(x)
             
-        x = self.fcf(x)
+        #x = self.fcf(x)
+        x = F.leaky_relu(self.fcf(x))
+        
         x = F.log_softmax(x, dim=1)
         # x = F.softmax(x, dim=1) -- bad
         
@@ -189,13 +194,15 @@ if __name__ == '__main__':
     # Load weights
     if load_model:
         try:
+            print('Loading model!')
             model.load_state_dict(T.load('nn.pt'))
         except:
-            pass
+            print('Error in loading model')
     
     optimizer = T.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.5)
     #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) # not learning
     
+    patience = 0
     for epoch in range(max_epoch):
         # TRAIN
         if train:
@@ -212,21 +219,12 @@ if __name__ == '__main__':
                 
                 if batch_idx % log_interval == 0:
                     pbar.set_postfix(loss=loss.item())
-                    '''
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, batch_idx * len(data), len(train_loader.dataset),
-                        100. * batch_idx / len(train_loader), loss.item()))
-                    '''
                 pbar.update(1)
             pbar.close()
             
             writer.add_scalar('Train Loss', loss.item(), epoch)
             writer.flush()
             
-            # SAVE
-            if save_model:
-                T.save(model.state_dict(),"nn.pt")
-        
         # TEST
         model.eval()
         
@@ -293,7 +291,24 @@ if __name__ == '__main__':
         
         testfile.write('\n\n')
         testfile.flush()
-        print()
     
+        score = -test_loss
+        # early stopping
+        if not best_score or score>best_score or correct>best_accuracy:
+            best_score = score
+            best_accuracy = correct
+            patience = 0
+            # SAVE
+            if save_model:
+                print('Saving Model!')
+                T.save(model.state_dict(),"nn.pt")
+        else:
+            patience += 1
+            if patience > early_stopping_patience:
+                print('Stopping early!!!')
+                break
+            
+        print()
+        
     testfile.close()
     
