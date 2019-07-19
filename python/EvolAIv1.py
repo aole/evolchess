@@ -24,7 +24,7 @@ save_model = False
 
 max_epoch = 100
 log_interval = 300
-    
+
 # parameters
 #  1    Side to move
 # 12    Position of each piece (both sides)
@@ -56,51 +56,24 @@ def create_input(board):
     for piece in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]:
         posbits += board.pieces(piece, chess.BLACK).tolist()
         
-    
     # all attack squares
-    to_queen_sqs = chess.SquareSet()
-    to_rook_sqs = chess.SquareSet()
-    to_bishop_sqs = chess.SquareSet()
-    to_knight_sqs = chess.SquareSet()
-    to_king_sqs = chess.SquareSet()
-    to_pawn_sqs = chess.SquareSet()
-    for move in board.legal_moves:
-        if board.san(move)[0]=='Q':
-            to_queen_sqs.add(move.to_square)
-        elif board.san(move)[0]=='R':
-            to_rook_sqs.add(move.to_square)
-        elif board.san(move)[0]=='B':
-            to_bishop_sqs.add(move.to_square)
-        elif board.san(move)[0]=='N':
-            to_knight_sqs.add(move.to_square)
-        elif board.san(move)[0]=='K' or board.san(move)[0]=='O':
-            to_king_sqs.add(move.to_square)
-        else:
-            to_pawn_sqs.add(move.to_square)
-    posbits += to_queen_sqs.tolist()+to_rook_sqs.tolist()+to_bishop_sqs.tolist()+to_knight_sqs.tolist()+to_king_sqs.tolist()+to_pawn_sqs.tolist()
+    to_sqs = [chess.SquareSet() for x in range(7)]
+    for i, p in board.piece_map().items():
+        for t in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.KING, chess.PAWN]:
+            if p.piece_type==t and p.color==board.turn:
+                to_sqs[p.piece_type] = to_sqs[p.piece_type].union(board.attacks(i))
+            
+    posbits += to_sqs[1].tolist()+to_sqs[2].tolist()+to_sqs[3].tolist()+to_sqs[4].tolist()+to_sqs[5].tolist()+to_sqs[6].tolist()
     
     # all opponent attack squares
     board.turn = not board.turn
-    to_queen_sqs = chess.SquareSet()
-    to_rook_sqs = chess.SquareSet()
-    to_bishop_sqs = chess.SquareSet()
-    to_knight_sqs = chess.SquareSet()
-    to_king_sqs = chess.SquareSet()
-    to_pawn_sqs = chess.SquareSet()
-    for move in board.legal_moves:
-        if board.san(move)[0]=='Q':
-            to_queen_sqs.add(move.to_square)
-        elif board.san(move)[0]=='R':
-            to_rook_sqs.add(move.to_square)
-        elif board.san(move)[0]=='B':
-            to_bishop_sqs.add(move.to_square)
-        elif board.san(move)[0]=='N':
-            to_knight_sqs.add(move.to_square)
-        elif board.san(move)[0]=='K' or board.san(move)[0]=='O':
-            to_king_sqs.add(move.to_square)
-        else:
-            to_pawn_sqs.add(move.to_square)
-    posbits += to_queen_sqs.tolist()+to_rook_sqs.tolist()+to_bishop_sqs.tolist()+to_knight_sqs.tolist()+to_king_sqs.tolist()+to_pawn_sqs.tolist()
+    to_sqs = [chess.SquareSet() for x in range(7)]
+    for i, p in board.piece_map().items():
+        for t in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.KING, chess.PAWN]:
+            if p.color==board.turn:
+                to_sqs[p.piece_type] = to_sqs[p.piece_type].union(board.attacks(i))
+            
+    posbits += to_sqs[1].tolist()+to_sqs[2].tolist()+to_sqs[3].tolist()+to_sqs[4].tolist()+to_sqs[5].tolist()+to_sqs[6].tolist()
     board.turn = not board.turn
     
     #en passant square
@@ -117,10 +90,7 @@ class FenDataset(Dataset):
         for idx, filename in enumerate(filenames):
             with open(filename, 'r') as f:
                 lines = f.readlines()
-                tot = len(lines)
-                pbar = tqdm(total=tot)
-                pbar.set_description('Loading '+filename+' ('+str(idx+1)+'/'+str(len(filenames))+')')
-                for i, line in enumerate(lines):
+                for line in tqdm(lines, desc='Loading '+filename+' ('+str(idx+1)+'/'+str(len(filenames))+')'):
                     fen, move = line[:-1].split(',')
                     self.all_fen.append((fen, move))
                     
@@ -129,8 +99,6 @@ class FenDataset(Dataset):
                     move = chess.Move.from_uci(move)
                     pos = move.from_square*64+move.to_square
                     self.all_data.append((x, pos, line[:-1]))
-                    pbar.update()
-                pbar.close()
                 
     def __len__(self):
         return len(self.all_data)
