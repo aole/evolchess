@@ -10,26 +10,26 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from tensorboardX import SummaryWriter
-writer = SummaryWriter('C:/temp/tb/runs/EvolAIv1.9')
+writer = SummaryWriter('runs/EvolAIv1.17')
 
 from tqdm import tqdm
 
 # consistent testing
 T.manual_seed(4)
+np.random.seed(4)
 
-datafiles = ['smallmio.txt']
+#datafiles = ['smallmio.txt']
 #datafiles = ['mio.txt']
-#datafiles = ['mio.txt', 'bmio.txt']
+datafiles = ['mio.txt', 'bmio.txt']
 
 train = True
 load_model = False
 save_model = True
 
-max_epoch = 500
+max_epoch = 100
 log_interval = 300
 early_stopping_patience = 10
-best_score = None
-best_accuracy = None
+best_score = best_accuracy = -99999
 
 # parameters
 #  1    Side to move
@@ -41,9 +41,9 @@ bit_layers = 1 + \
 learning_rate = 0.01
 
 # model structure
-convolution_layers = 2 #3
+convolution_layers = 2
 fully_connected = 1
-in_out_channel_multiplier = 2 #3
+in_out_channel_multiplier = 2
 
 # check for gpu
 device = T.device('cpu')
@@ -135,6 +135,11 @@ class Model(nn.Module):
             self.bn3 = nn.BatchNorm2d(out_channels*4)
             self.conv_out_nodes *= 2
         
+        if convolution_layers>=4:
+            self.conv4 = nn.Conv2d(out_channels*4, out_channels*8, kernel_size, padding=padding)
+            self.bn4 = nn.BatchNorm2d(out_channels*8)
+            self.conv_out_nodes *= 2
+        
         self.fc1 = nn.Linear(self.conv_out_nodes, 1024)
         self.drop1 = nn.Dropout(p=0.5)
         
@@ -145,29 +150,33 @@ class Model(nn.Module):
         self.fcf = nn.Linear(1024, 64*64)
     
     def forward(self, x):
-        x = F.leaky_relu(self.conv1(x))
+        x = F.relu(self.conv1(x))
         x = self.bn1(x)
         
         if convolution_layers >= 2:
-            x = F.leaky_relu(self.conv2(x))
+            x = F.relu(self.conv2(x))
             x = self.bn2(x)
             
         if convolution_layers >= 3:
-            x = F.leaky_relu(self.conv3(x))
+            x = F.relu(self.conv3(x))
             x = self.bn3(x)
         
+        if convolution_layers >= 4:
+            x = F.relu(self.conv4(x))
+            x = self.bn4(x)
+        
         x = x.view(-1, self.conv_out_nodes)
-        x = F.leaky_relu(self.fc1(x))
+        x = F.relu(self.fc1(x))
         x = self.drop1(x)
         
         if fully_connected >= 2:
-            x = F.leaky_relu(self.fc2(x))
+            x = F.relu(self.fc2(x))
             x = self.drop2(x)
             
         #x = self.fcf(x)
-        x = F.leaky_relu(self.fcf(x))
+        x = F.relu(self.fcf(x))
         
-        x = F.log_softmax(x, dim=1)
+        # x = F.log_softmax(x, dim=1)
         # x = F.softmax(x, dim=1) -- bad
         
         return x
@@ -201,6 +210,7 @@ if __name__ == '__main__':
     
     optimizer = T.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.5)
     #optimizer = T.optim.Adam(model.parameters(), lr=learning_rate) # not learning
+    #optimizer = T.optim.Adadelta(model.parameters())
     
     patience = 0
     for epoch in range(max_epoch):
@@ -213,7 +223,7 @@ if __name__ == '__main__':
                 data, target = data.to(device), target.to(device)
                 optimizer.zero_grad()
                 output = model(data)
-                loss = F.nll_loss(output, target)
+                loss = F.cross_entropy(output, target)
                 loss.backward()
                 optimizer.step()
                 
@@ -236,7 +246,7 @@ if __name__ == '__main__':
             for data, target, fen in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
-                test_loss += F.nll_loss(output, target, reduction='sum').item() # sum up batch loss
+                test_loss += F.cross_entropy(output, target, reduction='sum').item() # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
                 correct += pred.eq(target.view_as(pred)).sum().item()
                 rndidx = np.random.choice(len(fen))
@@ -244,7 +254,7 @@ if __name__ == '__main__':
         test_loss /= len(test_loader.dataset)
 
         accuracy = 100. * correct / len(test_loader.dataset)
-        print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+        print('\tTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.1f}%)'.format(
             test_loss, correct, len(test_loader.dataset), accuracy))
         
         writer.add_scalar('Test Loss', test_loss, epoch)
@@ -295,8 +305,10 @@ if __name__ == '__main__':
         score = -test_loss
         # early stopping
         if not best_score or score>best_score or correct>best_accuracy:
-            best_score = score
-            best_accuracy = correct
+            if score>best_score:
+                best_score = score
+            if correct>best_accuracy:
+                best_accuracy = correct
             patience = 0
             # SAVE
             if save_model:
